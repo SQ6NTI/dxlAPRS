@@ -15,8 +15,8 @@
 #ifndef maptool_H_
 #include "maptool.h"
 #endif
-#ifndef aprspos_H_
-#include "aprspos.h"
+#ifndef aprsstr_H_
+#include "aprsstr.h"
 #endif
 #ifndef aprsdecode_H_
 #include "aprsdecode.h"
@@ -80,6 +80,14 @@
 
 #define useri_CMDVIDEO "\312"
 
+#define useri_CMDCENTER "\313"
+
+#define useri_CMDSETMARK1LOCK "\314"
+
+#define useri_CMDSETMARK2LOCK "\315"
+
+#define useri_CMDCENTERMOUSE "c"
+
 #define useri_CMDLISTWINLINE "t"
 
 #define useri_CMDRADIORANGE "\022"
@@ -90,14 +98,19 @@
 
 #define useri_CMDZOOMTOMARKS "/"
 
+#define useri_CONFPOISYMFIND "\335"
+
 #define useri_CFGHEARD "H"
 
 #define useri_CFGRAWDECODED "u"
 
-#define useri_DEFAULTLUMOBJ "70"
+#define useri_DEFAULTLUMOBJ "90"
 
 #define useri_MULTILINEDEL 1
 /* subknob */
+
+#define useri_cMULTISYMBOL "*"
+/* if this ose symbol set */
 
 #define useri_SP1 "\360"
 /* micospaces for menu text */
@@ -118,7 +131,10 @@
 
 #define useri_SP9 "\370"
 
-#define useri_TILEBRIGHTNESS (-128)
+#define useri_SPS "\371"
+
+#define useri_TILEGAMMA 0.45
+/* make gamma off */
 
 #define useri_MINMHZ 0.1
 
@@ -129,18 +145,21 @@
 #define useri_BRIMUL 10
 /* lums percent to 0..1000 */
 
+#define useri_MAXANTALT 50000000
+/* max antenna higth m */
+
 struct useri_MOUSEPOS;
 
 
 struct useri_MOUSEPOS {
-   long x;
-   long y;
+   int32_t x;
+   int32_t y;
 };
 
 enum useri_CONFSET {useri_fFIND, useri_fLOGWFN, useri_fLOGDAYS, useri_fLOGFN,
                  useri_fLOGDATE, useri_fLOGFIND, useri_fFOTOFN,
                 useri_fXYSIZE, 
-   useri_fMYCALL, useri_fMYPOS, 
+   useri_fMYCALL, useri_fMYPOS, useri_fPOIFILTER, useri_fPOISMBOLS, 
    useri_fNBTEXT, useri_fMYSYM, useri_fNETBTIME, useri_fRFBTSHIFT, 
    useri_fRBTEXT, useri_fRBTYP, useri_fRBNAME, useri_fRBSYMB, useri_fRBPOS,
                 useri_fRBPOSTYP, useri_fRBALT, 
@@ -193,9 +212,9 @@ enum useri_CONFSET {useri_fFIND, useri_fLOGWFN, useri_fLOGDAYS, useri_fLOGFN,
    useri_fEDITLINE};
 
 
-extern unsigned long useri_newxsize;
+extern uint32_t useri_newxsize;
 
-extern unsigned long useri_newysize;
+extern uint32_t useri_newysize;
 
 extern struct useri_MOUSEPOS useri_xmouse;
 
@@ -205,11 +224,11 @@ struct useri__D0;
 
 
 struct useri__D0 {
-   unsigned long menus;
-   unsigned long mon;
-   unsigned long screens;
-   unsigned long req;
-   unsigned long srtm;
+   uint32_t menus;
+   uint32_t mon;
+   uint32_t screens;
+   uint32_t req;
+   uint32_t poi;
 };
 
 extern struct useri__D0 useri_debugmem;
@@ -226,46 +245,46 @@ extern char useri_maximized;
 
 extern char useri_isblown;
 
-extern long useri_nextmsg;
+extern int32_t useri_nextmsg;
 
 extern maptool_pIMAGE useri_panoimage;
 
 extern void useri_mainpop(void);
 
-extern void useri_textautomenu(long, long, unsigned long, unsigned long,
-                char, char [], unsigned long, char [], unsigned long,
-                char [], unsigned long);
+extern void useri_textautomenu(int32_t, int32_t, uint32_t, uint32_t,
+                char, char [], uint32_t, char [], uint32_t,
+                char [], uint32_t);
 
-extern void useri_textautosize(long, long, unsigned long, unsigned long,
-                char, char [], unsigned long);
+extern void useri_textautosize(int32_t, int32_t, uint32_t, uint32_t,
+                char, char [], uint32_t);
 
-extern void useri_say(char [], unsigned long, unsigned long, char);
+extern void useri_say(char [], uint32_t, uint32_t, char);
 
 extern void useri_killallmenus(void);
 
-extern void useri_killmenuid(unsigned long);
+extern void useri_killmenuid(uint32_t);
 
 extern void useri_loadconfig(char);
 
 extern void useri_saveconfig(void);
 
-extern void useri_postoconfig(struct aprspos_POSITION);
+extern void useri_postoconfig(struct aprsstr_POSITION);
 
 extern void useri_rdlums(void);
 
-extern void useri_xerrmsg(char [], unsigned long);
+extern void useri_xerrmsg(char [], uint32_t);
 
 extern void useri_redraw(maptool_pIMAGE);
 
-extern void useri_mouseleftdown(long, long);
+extern void useri_mouseleftdown(int32_t, int32_t);
 
-extern void useri_mouserightdown(long, long);
+extern void useri_mouserightdown(int32_t, int32_t);
 
 extern void useri_keychar(char, char, char);
 
-extern void useri_resizewin(long, long, char);
+extern void useri_resizewin(int32_t, int32_t, char);
 
-extern void useri_mousemove(long, long);
+extern void useri_mousemove(int32_t, int32_t);
 
 extern void useri_initmenus(void);
 
@@ -273,108 +292,112 @@ extern void useri_timerevent(void);
 
 extern void useri_refreshwin(void);
 
-extern void useri_Quit(void);
-
 extern void useri_mouserelease(void);
 
-extern void useri_mousemiddle(long, long);
+extern void useri_mousemiddle(int32_t, int32_t);
 
 extern void useri_downloadprogress(void);
 
 extern void useri_wrheap(void);
 
-extern void useri_sayonoff(char [], unsigned long, char);
+extern void useri_sayonoff(char [], uint32_t, char);
 
-extern void useri_getview(unsigned char, unsigned long, float *,
-                struct aprspos_POSITION *);
+extern void useri_getview(uint8_t, uint32_t, float *,
+                struct aprsstr_POSITION *);
 
 extern void useri_refrinfo(void);
 
-extern unsigned long useri_localtime(void);
+extern uint32_t useri_localtime(void);
 
 extern void useri_refrlog(void);
 
-extern long useri_conf2int(unsigned char, unsigned long, long, long, long);
+extern int32_t useri_conf2int(uint8_t, uint32_t, int32_t, int32_t,
+                int32_t);
 
-extern float useri_conf2real(unsigned char, unsigned long, float, float,
+extern float useri_conf2real(uint8_t, uint32_t, float, float,
                 float);
 
-extern void useri_confstr(unsigned char, char [], unsigned long);
+extern void useri_confstr(uint8_t, char [], uint32_t);
 
-extern void useri_conf2str(unsigned char, unsigned long, char [],
-                unsigned long);
+extern void useri_conf2str(uint8_t, uint32_t, uint32_t, char,
+                char [], uint32_t);
 
-extern void useri_confstrings(unsigned char, unsigned long, char, char [],
-                unsigned long);
+extern void useri_confstrings(uint8_t, uint32_t, char,
+                char [], uint32_t);
 
-extern unsigned char useri_confflags(unsigned char, unsigned long);
+extern uint8_t useri_confflags(uint8_t, uint32_t);
 
-extern void useri_confappend(unsigned char, char [], unsigned long);
+extern void useri_confappend(uint8_t, char [], uint32_t);
 
-extern void useri_configbool(unsigned char, char);
+extern void useri_configbool(uint8_t, char);
 
-extern char useri_configon(unsigned char);
+extern char useri_configon(uint8_t);
 
-extern void useri_AddConfLine(unsigned char, unsigned char, char [],
-                unsigned long);
+extern void useri_AddConfLine(uint8_t, uint8_t, char [], uint32_t);
 
-extern void useri_setview(long, char [], unsigned long);
+extern void useri_setview(int32_t, char [], uint32_t);
 
 extern void useri_clrconfig(void);
 
-extern void useri_starthint(unsigned long, char);
+extern void useri_starthint(uint32_t, char);
 
-extern void useri_Setmap(unsigned long);
+extern void useri_Setmap(uint32_t);
 
-extern void useri_helptext(unsigned long, unsigned long, unsigned long,
-                unsigned long, char [], unsigned long);
+extern void useri_helptext(uint32_t, uint32_t, uint32_t, uint32_t,
+                char [], uint32_t);
 
 extern void useri_pulloff(void);
 
-extern void useri_saveXYtocfg(unsigned char, long, long);
+extern void useri_saveXYtocfg(uint8_t, int32_t, int32_t);
 
-extern void useri_clrmsgtext(char [], unsigned long);
+extern void useri_clrmsgtext(char [], uint32_t);
 
-extern void useri_getstartxysize(long *, long *);
+extern void useri_getstartxysize(int32_t *, int32_t *);
 
-extern void useri_wrstrlist(char [], unsigned long, aprsdecode_MONCALL,
-                struct aprspos_POSITION, unsigned long);
+extern void useri_wrstrlist(char [], uint32_t, aprsdecode_MONCALL,
+                struct aprsstr_POSITION, uint32_t);
 
-extern void useri_wrstrmon(char [], unsigned long, struct aprspos_POSITION);
+extern void useri_wrstrmon(char [], uint32_t, struct aprsstr_POSITION);
 
 extern void useri_clrcpmarks(void);
 
-extern void useri_copypaste(char [], unsigned long);
+extern void useri_copypaste(char [], uint32_t);
 
-extern char useri_isupdated(unsigned char);
+extern char useri_isupdated(uint8_t);
 
-extern long useri_guesssize(char [], unsigned long, char [], unsigned long);
+extern int32_t useri_guesssize(char [], uint32_t, char [],
+                uint32_t);
 /* return filsize in kb not exact >2gb */
 
-extern void useri_ColConfset(struct aprsdecode_COLTYP *, unsigned char);
+extern void useri_ColConfset(struct aprsdecode_COLTYP *, uint8_t);
 
-extern char useri_gpsalt(unsigned char);
+extern char useri_gpsalt(uint8_t);
 
-extern void useri_textbubble(struct aprspos_POSITION, char [], unsigned long,
-                 char);
+extern void useri_textbubble(struct aprsstr_POSITION, char [],
+                uint32_t, char);
 
 extern void useri_killbubble(void);
 
-extern void useri_popwatchcall(char [], unsigned long);
+extern void useri_popwatchcall(char [], uint32_t);
 
-extern void useri_allocimage(maptool_pIMAGE *, long, long, char);
+extern void useri_allocimage(maptool_pIMAGE *, int32_t, int32_t,
+                char);
 
-extern unsigned long useri_mainys(void);
+extern uint32_t useri_mainys(void);
 
-extern void useri_rdonesymb(char);
+extern void useri_rdonesymb(char, char);
 
 extern void useri_hoverinfo(struct aprsdecode_CLICKOBJECT);
 
-extern void useri_int2cfg(unsigned char, long);
+extern void useri_int2cfg(uint8_t, int32_t);
 
 extern void useri_resetimgparms(void);
 
 extern void useri_poligonmenu(void);
+
+extern void useri_Tilegamma0(float);
+
+extern void useri_mapbritocfg(void);
 
 
 extern void useri_BEGIN(void);

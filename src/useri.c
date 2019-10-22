@@ -16,8 +16,8 @@
 #ifndef maptool_H_
 #include "maptool.h"
 #endif
-#ifndef aprspos_H_
-#include "aprspos.h"
+#ifndef aprsstr_H_
+#include "aprsstr.h"
 #endif
 #ifndef aprsdecode_H_
 #include "aprsdecode.h"
@@ -29,8 +29,8 @@
 #include "osi.h"
 #endif
 #include <osic.h>
-#ifndef aprsstr_H_
-#include "aprsstr.h"
+#ifndef aprspos_H_
+#include "aprspos.h"
 #endif
 #ifndef aprstext_H_
 #include "aprstext.h"
@@ -38,11 +38,14 @@
 #ifndef aprstat_H_
 #include "aprstat.h"
 #endif
+#ifndef libsrtm_H_
+#include "libsrtm.h"
+#endif
 
 
 
-unsigned long useri_newxsize;
-unsigned long useri_newysize;
+uint32_t useri_newxsize;
+uint32_t useri_newysize;
 struct useri_MOUSEPOS useri_xmouse;
 char useri_listwin;
 
@@ -54,9 +57,10 @@ char useri_refresh;
 char useri_beaconed;
 char useri_maximized;
 char useri_isblown;
-long useri_nextmsg;
+int32_t useri_nextmsg;
 maptool_pIMAGE useri_panoimage;
 /* aprsmap user interface */
+/*rdmountains, closesrtmfile,*/
 #define useri_MAPLOADER "gm.sh"
 
 #define useri_SHOTFORMATS "(.ppm/.png)"
@@ -70,9 +74,7 @@ maptool_pIMAGE useri_panoimage;
 #define useri_TICKERHEADLINE "0"
 /* some window managers do not free window headline mem */
 
-#define useri_POIFILENAME "poi.txt"
-
-#define useri_MYPOIFILENAME "mypoi.txt"
+#define useri_CHECKVERSFN "chkvers.txt"
 
 #define useri_MAXXSIZE 32000
 
@@ -80,18 +82,21 @@ maptool_pIMAGE useri_panoimage;
 
 #define useri_MINXSIZE 100
 
-#define useri_MINYSIZE 50
+#define useri_MINYSIZE 70
 
 #define useri_DEFAULTXSIZE 600
 
 #define useri_DEFAULTYSIZE 400
 
-#define useri_COLOURS 100
+#define useri_COLOURSZ 17
 /* colour chooser size */
 
 #define useri_COLOURSFRAME 5
 
 #define useri_COLOURLUMA 10
+
+#define useri_DEFAULTBRI 25
+/* defaul map brightness */
 
 #define useri_ONLINESETUPURL 5
 /* menu line */
@@ -119,8 +124,8 @@ maptool_pIMAGE useri_panoimage;
 #define useri_MOUSESHOWID 19
 /* win d mouseshow */
 
-#define useri_MAXKNOBS 30
-/* menu lines */
+#define useri_MAXKNOBS 60
+/* max menu lines */
 
 #define useri_CONFIGWIDTH 200
 
@@ -151,11 +156,7 @@ maptool_pIMAGE useri_panoimage;
 
 #define useri_POTIOFF 8
 
-#define useri_POTWIDTH 220
-
-#define useri_WDIV 4
-
-#define useri_TDIV 409
+#define useri_POTWIDTH 37
 
 #define useri_CONFIGLINES 9
 
@@ -176,9 +177,6 @@ maptool_pIMAGE useri_panoimage;
 
 #define useri_DEFLOBJ 70
 /* default objects luminance */
-
-#define useri_DEFLMAP 30
-/* default map luminance */
 
 #define useri_DEFLTRACK 80
 /* default tracks luminance */
@@ -243,6 +241,8 @@ maptool_pIMAGE useri_panoimage;
 
 #define useri_STATUSHINT 17
 
+#define useri_SYMCHFRAME "\361"
+
 /*      OVERSHOOT=WHITELEVEL*3;            (* fast white level limiter via table *) */
 #define useri_TRANSPARENCE 65535
 
@@ -250,7 +250,7 @@ maptool_pIMAGE useri_panoimage;
 
 #define useri_POTIFPS 10
 
-#define useri_TOOLBARX 187
+#define useri_TOOLBARX 31
 
 #define useri_TOOLBARID 255
 
@@ -267,16 +267,16 @@ maptool_pIMAGE useri_panoimage;
 
 #define useri_BUBBLWINID 201
 
+#define useri_PANOWINID 202
+
+#define useri_OVERLAYID 203
+/* overlay symbol chooser id */
+
 #define useri_DIGIEDITID 224
 
 #define useri_BEACONEDITID 226
 
 #define useri_LISTWINID 225
-
-#define useri_PANOWINID 202
-
-#define useri_OVERLAYID 203
-/* overlay symbol chooser id */
 /*      ZOOMTO=7C;  */
 
 /*      BLOWOK=11C; */
@@ -452,6 +452,11 @@ maptool_pIMAGE useri_panoimage;
 
 #define useri_CMDCLONE "\332"
 
+#define useri_CONFPOISYM "\333"
+
+#define useri_CHOOSECONFPOISYM "\334"
+/*      CONFPOISYMFIND=335C; (* in def *) */
+
 struct CONFLINE;
 
 typedef struct CONFLINE * pCONFLINE;
@@ -459,7 +464,7 @@ typedef struct CONFLINE * pCONFLINE;
 
 struct CONFLINE {
    pCONFLINE next;
-   unsigned char active;
+   uint8_t active;
    char line[201];
 };
 
@@ -471,13 +476,13 @@ struct CONFIG;
 
 
 struct CONFIG {
-   unsigned char typ;
+   uint8_t typ;
    char updated; /* updated by editor */
    char title[31];
-   unsigned short curspos;
-   unsigned short width;
-   unsigned char on;
-   unsigned long hint;
+   uint16_t curspos;
+   uint16_t width;
+   uint8_t on;
+   uint32_t hint;
    pCONFLINE lines;
 };
 
@@ -488,46 +493,48 @@ struct MENU;
 
 typedef struct MENU * pMENU;
 
+typedef uint32_t sMENULINES[2];
+
 
 struct MENU {
    pMENU next;
    maptool_pIMAGE image;
-   unsigned long yknob;
-   unsigned long x0;
-   unsigned long y00;
-   unsigned long xsize;
-   unsigned long ysize;
-   unsigned long nowx; /* real position while on screen */
-   unsigned long nowy;
-   unsigned long oldknob;
-   unsigned long hiknob;
-   unsigned long oldsub;
-   unsigned long wid; /* window class id */
-   unsigned long scroll; /* lines in window shifted */
-   unsigned char minnormmax; /* minimized normal maximized */
-   unsigned char sizeconf; /* store to this config when resized */
-   unsigned char pullconf; /* pull menu on and store in config */
-   unsigned long pullyknob; /* click size from top to move window */
-   unsigned long scrysize; /* lines collumns */
-   unsigned long scrxsize;
-   long scrx; /* pixel lines*linehight */
-   long scry;
+   uint32_t yknob;
+   uint32_t x0;
+   uint32_t y00;
+   uint32_t xsize;
+   uint32_t ysize;
+   uint32_t nowx; /* real position while on screen */
+   uint32_t nowy;
+   uint32_t oldknob;
+   uint32_t hiknob;
+   uint32_t oldsub;
+   uint32_t wid; /* window class id */
+   uint32_t scroll; /* lines in window shifted */
+   uint8_t minnormmax; /* minimized normal maximized */
+   uint8_t sizeconf; /* store to this config when resized */
+   uint8_t pullconf; /* pull menu on and store in config */
+   uint32_t pullyknob; /* click size from top to move window */
+   uint32_t scrysize; /* lines collumns */
+   uint32_t scrxsize;
+   int32_t scrx; /* pixel lines*linehight */
+   int32_t scry;
    void ( *redrawproc)(pMENU);
-   unsigned long timeout;
+   uint32_t timeout;
    char notoverdraw;
    char drawn;
    char hidden;
    char fullclamp; /* clamp win for cursor scrolling */
    char saveimage;
-   unsigned char background;
-   char submen[31];
-   char cmds[31];
-   unsigned short helpindex[31];
-   unsigned char confidx[31];
-   unsigned short subk[31][21];
-   unsigned long nohilite; /* use keyboard */
-   unsigned long noprop;
-   unsigned long clampkb;
+   uint8_t background;
+   char submen[61];
+   char cmds[61];
+   uint16_t helpindex[61];
+   uint8_t confidx[61];
+   uint16_t subk[61][21];
+   sMENULINES nohilite; /* use keyboard */
+   sMENULINES noprop;
+   sMENULINES clampkb;
 };
 
 struct LISTLINE;
@@ -537,14 +544,14 @@ typedef struct LISTLINE * pLISTLINE;
 
 struct LISTLINE {
    pLISTLINE next;
-   struct aprspos_POSITION position; /* to show marker on map */
+   struct aprsstr_POSITION position; /* to show marker on map */
    aprsdecode_MONCALL call; /* to sort by call */
-   unsigned long time0; /* to sort by time */
+   uint32_t time0; /* to sort by time */
    char withport; /* first char is a port to colorize */
-   unsigned long markcp;
-   unsigned long startcp; /* c/p highlight */
-   unsigned long endcp;
-   unsigned long len; /* for dealloc */
+   uint32_t markcp;
+   uint32_t startcp; /* c/p highlight */
+   uint32_t endcp;
+   uint32_t len; /* for dealloc */
    char text[501];
 };
 
@@ -552,12 +559,12 @@ struct LISTBUFFER;
 
 
 struct LISTBUFFER {
-   unsigned long newlines; /* count lines to compensate v scroll position */
-   unsigned long listlinecnt;
+   uint32_t newlines; /* count lines to compensate v scroll position */
+   uint32_t listlinecnt;
    char sortby;
-   unsigned char isicon;
-   unsigned char xy;
-   unsigned char size;
+   uint8_t isicon;
+   uint8_t xy;
+   uint8_t size;
    pLISTLINE listlines;
    char listwintitle[31];
 };
@@ -581,45 +588,46 @@ static char poioff;
 
 static maptool_pIMAGE redrawimg;
 
-static unsigned long clampedline;
-                /* on click to a clamped text line set cursor*/
+static uint32_t clampedline; /* on click to a clamped text line set cursor*/
 
-static unsigned long dellog;
+static uint32_t dellog;
 
-static unsigned long focuswid;
+static uint32_t focuswid;
 
 /* window class last touched with pointer */
-static unsigned long helpdepth;
+static uint32_t helpdepth;
 
-static unsigned long configedit;
+static uint32_t configedit;
 
-static unsigned long mouseshowcnt;
+static uint32_t mouseshowcnt;
+
+static uint32_t poinameline;
 
 static pMENU menus;
 
-static unsigned long hinttime;
+static uint32_t hinttime;
 
 static struct useri_MOUSEPOS hintmouse;
                 /* store mouse to close hover hints if moved a radius away */
 
-static unsigned long hintnum;
+static uint32_t hintnum;
 
 static char helpscroll[11][41];
 
-static struct CONFIG configs[154];
+static struct CONFIG configs[156];
 
 static char pullmenuwhat;
 
 /* store what should be moved on a menu at pull startpoint */
-static long pullmenuwid;
+static int32_t pullmenuwid;
 
-static long cpendx;
+static int32_t cpendx;
 
-static long cpendy;
+static int32_t cpendy;
 
-static long pullmenux;
+static int32_t pullmenux;
 
-static long pullmenuy;
+static int32_t pullmenuy;
 
 static struct LISTBUFFER listbuffer;
 
@@ -630,7 +638,85 @@ static struct maptool_PANOWIN panowin;
 static char digiedline[201];
 
 
-static long inclim(long n, long d, long min0)
+static void startcheckvers(void)
+{
+   char h[1024];
+   char s[1024];
+   int32_t fd;
+   int32_t i;
+   if (aprsdecode_checkversion.runs) {
+      xosi_CheckProg(&aprsdecode_checkversion);
+      /*WrInt(checkversion.exitcode, 1); WrInt(ORD(checkversion.runs), 2);
+                WrStrLn(" exc0"); */
+      if (aprsdecode_checkversion.runs) {
+         xosi_CheckProg(&aprsdecode_checkversion);
+         /*WrInt(checkversion.exitcode, 1); WrInt(ORD(checkversion.runs), 2);
+                 WrStrLn(" exc1"); */
+         if (aprsdecode_checkversion.runs) {
+            useri_xerrmsg("Check Version in Progress", 26ul);
+         }
+      }
+   }
+   if (!aprsdecode_checkversion.runs) {
+      h[0] = 0;
+      fd = osi_OpenRead("chkvers.txt", 12ul);
+      if (osic_FdValid(fd)) {
+         i = osi_RdBin(fd, (char *)h, 1024u/1u, 1024UL);
+         osic_Close(fd);
+         if (i<0L) {
+            h[0] = 0;
+            useri_xerrmsg("Can not read [chkvers.txt]", 27ul);
+         }
+         else if (i<=1023L) h[i] = 0;
+      }
+      else useri_xerrmsg("File [chkvers.txt] not found", 29ul);
+      s[0] = 0;
+      i = 0L;
+      while (i<=1023L && h[i]) {
+         if (h[i]=='$') aprsstr_Append(s, 1024ul, "0.77", 5ul);
+         else aprsstr_Append(s, 1024ul, (char *) &h[i], 1u/1u);
+         ++i;
+      }
+      /*WrStrLn(s); */
+      xosi_StartProg(s, 1024ul, &aprsdecode_checkversion);
+      if (aprsdecode_checkversion.runs) {
+         xosi_CheckProg(&aprsdecode_checkversion);
+         /*WrInt(checkversion.exitcode, 1); WrInt(ORD(checkversion.runs), 2);
+                 WrStrLn(" exc2"); */
+         if (aprsdecode_checkversion.exitcode) {
+            strncpy(h,"Cannot Start [",1024u);
+            aprsstr_Append(h, 1024ul, s, 1024ul);
+            aprsstr_Append(h, 1024ul, "] exit code:", 13ul);
+            aprsstr_IntToStr(aprsdecode_checkversion.exitcode, 0UL, s,
+                1024ul);
+            aprsstr_Append(h, 1024ul, s, 1024ul);
+            useri_xerrmsg(h, 1024ul);
+         }
+      }
+   }
+} /* end startcheckvers() */
+
+
+extern void useri_Tilegamma0(float gamma)
+{
+   uint32_t i;
+   float v;
+   if (gamma<0.01f) gamma = 0.01f;
+   else if (gamma>50.0f) gamma = 50.0f;
+   for (i = 0UL; i<=256UL; i++) {
+      if (i==0UL) v = 0.0f;
+      else {
+         v = osic_exp(X2C_DIVR(osic_ln(X2C_DIVR((float)i,256.0f)),
+                gamma))*1024.5f;
+      }
+      if (v<=0.0f) v = 0.0f;
+      else if (v>1024.0f) v = 1024.0f;
+      aprsdecode_lums.maplumcorr[i] = aprsdecode_trunc(v);
+   } /* end for */
+} /* end Tilegamma() */
+
+
+static int32_t inclim(int32_t n, int32_t d, int32_t min0)
 /* inc CARD INT with limit to min */
 {
    n += d;
@@ -649,8 +735,8 @@ static void disposeimg(maptool_pIMAGE * image)
 } /* end disposeimg() */
 
 
-extern void useri_allocimage(maptool_pIMAGE * image, long x, long y,
-                char save)
+extern void useri_allocimage(maptool_pIMAGE * image, int32_t x,
+                int32_t y, char save)
 {
    size_t tmp[2];
    if (save) {
@@ -660,8 +746,8 @@ extern void useri_allocimage(maptool_pIMAGE * image, long x, long y,
          useri_panoimage = 0;
       }
    }
-   if (*image && (x!=(long)(((*image)->Len1-1)+1UL) || y!=(long)(((*image)
-                ->Len0-1)+1UL))) disposeimg(image);
+   if (*image && (x!=(int32_t)(((*image)->Len1-1)+1UL) || y!=(int32_t)
+                (((*image)->Len0-1)+1UL))) disposeimg(image);
    if (*image==0) {
       X2C_DYNALLOCATE((char **)image,sizeof(struct maptool_PIX),
                 (tmp[0] = (size_t)x,tmp[1] = (size_t)y,tmp),2u);
@@ -678,15 +764,15 @@ extern void useri_allocimage(maptool_pIMAGE * image, long x, long y,
 } /* end allocimage() */
 
 
-static long daylylogsize(const char fname[], unsigned long fname_len,
-                char lenstr[], unsigned long lenstr_len)
+static int32_t daylylogsize(const char fname[], uint32_t fname_len,
+                char lenstr[], uint32_t lenstr_len)
 {
    aprsdecode_FILENAME fn;
    aprsdecode_FILENAME fnd;
-   unsigned long t;
-   long fc;
+   uint32_t t;
+   int32_t fc;
    float size;
-   long ret;
+   int32_t ret;
    aprsstr_Assign(fn, 1024ul, fname, fname_len);
    t = aprsdecode_realtime;
    size = 0.0f;
@@ -706,18 +792,18 @@ static long daylylogsize(const char fname[], unsigned long fname_len,
    } while (t>=1388534400UL);
    /* oldest possible file */
    if (size<10000.0f) {
-      aprsstr_IntToStr((long)aprsdecode_trunc(size), 1UL, lenstr,
+      aprsstr_IntToStr((int32_t)aprsdecode_trunc(size), 1UL, lenstr,
                 lenstr_len);
       aprsstr_Append(lenstr, lenstr_len, "B", 2ul);
    }
    else if (size<10000.0f) {
-      aprsstr_IntToStr((long)aprsdecode_trunc(X2C_DIVR(size,1000.0f)), 1UL,
-                lenstr, lenstr_len);
+      aprsstr_IntToStr((int32_t)aprsdecode_trunc(X2C_DIVR(size,1000.0f)),
+                1UL, lenstr, lenstr_len);
       aprsstr_Append(lenstr, lenstr_len, "kB", 3ul);
    }
    else {
-      aprsstr_IntToStr((long)aprsdecode_trunc(X2C_DIVR(size,1.E+6f)), 1UL,
-                lenstr, lenstr_len);
+      aprsstr_IntToStr((int32_t)aprsdecode_trunc(X2C_DIVR(size,1.E+6f)),
+                1UL, lenstr, lenstr_len);
       aprsstr_Append(lenstr, lenstr_len, "MB", 3ul);
    }
    if (size!=0.0f) ret = 1L;
@@ -725,16 +811,16 @@ static long daylylogsize(const char fname[], unsigned long fname_len,
 } /* end daylylogsize() */
 
 
-extern long useri_guesssize(char fn[], unsigned long fn_len, char lenstr[],
-                unsigned long lenstr_len)
+extern int32_t useri_guesssize(char fn[], uint32_t fn_len,
+                char lenstr[], uint32_t lenstr_len)
 /* return filsize in kb not exact >2gb */
 {
-   long fc;
-   unsigned long byte;
-   unsigned long pos;
+   int32_t fc;
+   uint32_t byte;
+   uint32_t pos;
    char b;
    char s[100];
-   long ret;
+   int32_t ret;
    ret = daylylogsize(fn, fn_len, lenstr, lenstr_len);
    if (ret>=0L) return ret;
    /* dayly log */
@@ -748,7 +834,7 @@ extern long useri_guesssize(char fn[], unsigned long fn_len, char lenstr[],
       pos += 131072UL;
    }
    if (pos<2000000UL) {
-      byte = (unsigned long)osic_Size(fc);
+      byte = (uint32_t)osic_Size(fc);
       pos = byte/1000UL;
    }
    osic_Close(fc);
@@ -770,12 +856,12 @@ extern long useri_guesssize(char fn[], unsigned long fn_len, char lenstr[],
    }
    aprsstr_CardToStr(pos, 0UL, lenstr, lenstr_len);
    aprsstr_Append(lenstr, lenstr_len, s, 100ul);
-   return (long)pos;
+   return (int32_t)pos;
 } /* end guesssize() */
 
 
-extern void useri_AddConfLine(unsigned char v, unsigned char act, char s[],
-                unsigned long s_len)
+extern void useri_AddConfLine(uint8_t v, uint8_t act, char s[],
+                uint32_t s_len)
 {
    pCONFLINE pl;
    if (v<=useri_fEDITLINE) {
@@ -792,13 +878,13 @@ extern void useri_AddConfLine(unsigned char v, unsigned char act, char s[],
             }
             if (pl==0) {
                /* not same text in table */
-               osic_alloc((X2C_ADDRESS *) &pl, sizeof(struct CONFLINE));
+               osic_alloc((char * *) &pl, sizeof(struct CONFLINE));
                if (pl==0) {
                   osi_WrStrLn("menu out of memory", 19ul);
                   useri_wrheap();
                   return;
                }
-               memset((X2C_ADDRESS)pl,(char)0,sizeof(struct CONFLINE));
+               memset((char *)pl,(char)0,sizeof(struct CONFLINE));
                pl->next = configs[v].lines;
                configs[v].lines = pl;
             }
@@ -812,13 +898,13 @@ extern void useri_AddConfLine(unsigned char v, unsigned char act, char s[],
 } /* end AddConfLine() */
 
 
-static void icfg(unsigned char v, const char s[], unsigned long s_len)
+static void icfg(uint8_t v, const char s[], uint32_t s_len)
 {
    useri_AddConfLine(v, 0U, s, s_len);
 } /* end icfg() */
 
 
-extern void useri_int2cfg(unsigned char cfg, long v)
+extern void useri_int2cfg(uint8_t cfg, int32_t v)
 {
    char s[31];
    aprsstr_IntToStr(v, 0UL, s, 31ul);
@@ -828,13 +914,13 @@ extern void useri_int2cfg(unsigned char cfg, long v)
 
 extern void useri_clrconfig(void)
 {
-   memset((char *)configs,(char)0,sizeof(struct CONFIG [154]));
+   memset((char *)configs,(char)0,sizeof(struct CONFIG [156]));
 } /* end clrconfig() */
 
 
-static void initc(unsigned char v, const char tit[], unsigned long tit_len,
-                unsigned char t, const char text[], unsigned long text_len,
-                char o, unsigned long hi)
+static void initc(uint8_t v, const char tit[], uint32_t tit_len,
+                uint8_t t, const char text[], uint32_t text_len,
+                char o, uint32_t hi)
 {
    struct CONFIG * anonym;
    { /* with */
@@ -860,11 +946,11 @@ static void initconfig1(void)
                 180UL);
    initc(useri_fLTEXT, "Brightness Text", 16ul, useri_cLINE, "70", 3ul, 0,
                 185UL);
-   initc(useri_fLSYM, "Brightness Symbol", 18ul, useri_cLINE, "80", 3ul, 0,
+   initc(useri_fLSYM, "Brightness Symbol", 18ul, useri_cLINE, "95", 3ul, 0,
                 190UL);
    initc(useri_fLTRACK, "Brightness Track", 17ul, useri_cLINE, "65", 3ul, 0,
                 195UL);
-   initc(useri_fLOBJ, "Brightness Object", 18ul, useri_cLINE, "70", 3ul, 0,
+   initc(useri_fLOBJ, "Brightness Object", 18ul, useri_cLINE, "90", 3ul, 0,
                 200UL);
    initc(useri_fLMAP, "Brightness Map", 15ul, useri_cLINE, "30", 3ul, 0,
                 205UL);
@@ -931,7 +1017,7 @@ static void initconfig1(void)
 
 static void initconfig(void)
 {
-   unsigned char i;
+   uint8_t i;
    char s[100];
    pCONFLINE ph;
    pCONFLINE pl;
@@ -939,7 +1025,7 @@ static void initconfig(void)
       pl = configs[i].lines;
       while (pl) {
          ph = pl->next;
-         osic_free((X2C_ADDRESS *) &pl, sizeof(struct CONFLINE));
+         osic_free((char * *) &pl, sizeof(struct CONFLINE));
          pl = ph;
       }
       if (i==useri_fEDITLINE) break;
@@ -1057,8 +1143,8 @@ f 22050 -C 0 -p /dev/ttyS0 0 -M 0 -t 250 -T 6 -L 127.0.0.1:9002:9001 -m 0",
                 0, 150UL);
    initc(useri_fDELAYGETMAP, "Delay Start Loadmap s", 22ul, useri_cLINE, "0",
                  2ul, 0, 172UL);
-   initc(useri_fCENTER, "Center Watch Object", 20ul, useri_cLINE, "40", 3ul,
-                0, 220UL);
+   initc(useri_fCENTER, "Center Watch Object", 20ul, useri_cLINE, "100", 4ul,
+                 0, 220UL);
    initc(useri_fALLOWEXP, "Allow Expand Tile", 18ul, useri_cBOOL, "", 1ul, 1,
                  230UL);
    initc(useri_fZOOMMISS, "Autozoom up to having Tiles", 28ul, useri_cBOOL, "\
@@ -1071,7 +1157,8 @@ f 22050 -C 0 -p /dev/ttyS0 0 -M 0 -t 250 -T 6 -L 127.0.0.1:9002:9001 -m 0",
                 0, 295UL);
    initc(useri_fVIDEOFAST, "Video Accel Delay", 18ul, useri_cLINE, "0", 2ul,
                 0, 300UL);
-   initc(useri_fFONTSIZE, "Fontsize", 9ul, useri_cLINE, "10", 3ul, 0, 302UL);
+   initc(useri_fFONTSIZE, "Fontsize", 9ul, useri_cLINE, "13 8 140", 9ul, 0,
+                302UL);
    initc(useri_fVIEW, "View", 5ul, useri_cLIST, "", 1ul, 0, 305UL);
    initc(useri_fMAXZOOM, "Max Zoom", 9ul, useri_cLINE, "18", 3ul, 0, 310UL);
    initc(useri_fDOWNLOADZOOM, "Download to Zoom", 17ul, useri_cLINE, "", 1ul,
@@ -1096,7 +1183,7 @@ f 22050 -C 0 -p /dev/ttyS0 0 -M 0 -t 250 -T 6 -L 127.0.0.1:9002:9001 -m 0",
    initc(useri_fKMH, "Km/h Text", 10ul, useri_cBLINE, "km/h", 5ul, 1, 385UL);
    initc(useri_fWRINCOM, "Monitor InOut", 14ul, useri_cLINE, "1234", 5ul, 0,
                 388UL);
-   initc(useri_fWRTICKER, "Show Headline", 14ul, useri_cBLINE, "0", 2ul, 1,
+   initc(useri_fWRTICKER, "Show Headline", 14ul, useri_cBLINE, "0", 2ul, 0,
                 390UL);
    initc(useri_fLOCALTIME, "Local Time h", 13ul, useri_cLINE, "0", 2ul, 0,
                 395UL);
@@ -1114,7 +1201,7 @@ f 22050 -C 0 -p /dev/ttyS0 0 -M 0 -t 250 -T 6 -L 127.0.0.1:9002:9001 -m 0",
                 0, 417UL);
    initc(useri_fRAWFILT, "Raw Frame Filter", 17ul, useri_cBLIST, "", 1ul, 0,
                 418UL);
-   initc(useri_fMUSTBECALL, "Callcheck", 10ul, useri_cBOOL, "", 1ul, 1,
+   initc(useri_fMUSTBECALL, "Callcheck", 10ul, useri_cBOOL, "", 1ul, 0,
                 420UL);
    initc(useri_fGEOBRIGHTNESS, "Brightness", 11ul, useri_cLINE, "30", 3ul, 0,
                  422UL);
@@ -1168,6 +1255,9 @@ f 22050 -C 0 -p /dev/ttyS0 0 -M 0 -t 250 -T 6 -L 127.0.0.1:9002:9001 -m 0",
                 485UL);
    initc(useri_fMENUSIZEMON, "Monwindow size", 15ul, useri_cLINE, "300 100",
                 8ul, 0, 490UL);
+   initc(useri_fPOIFILTER, "Filter", 7ul, useri_cLIST, "", 1ul, 0, 492UL);
+   initc(useri_fPOISMBOLS, "PoiSymbols", 11ul, useri_cBLIST, "", 1ul, 0,
+                493UL);
    initc(useri_fAUTOSAVE, "Save Config On Quit", 20ul, useri_cBOOL, "", 1ul,
                 1, 495UL);
    initc(useri_fEDITLINE, "", 1ul, useri_cLINE, " ", 2ul, 0, 499UL);
@@ -1175,13 +1265,13 @@ f 22050 -C 0 -p /dev/ttyS0 0 -M 0 -t 250 -T 6 -L 127.0.0.1:9002:9001 -m 0",
 } /* end initconfig() */
 
 
-static char isbool(unsigned char typ)
+static char isbool(uint8_t typ)
 {
    return (typ==useri_cBOOL || typ==useri_cBLINE) || typ==useri_cBLIST;
 } /* end isbool() */
 
 
-extern char useri_configon(unsigned char v)
+extern char useri_configon(uint8_t v)
 {
    if (configs[v].typ==useri_cBOOL) return configs[v].on>0U;
    else if (configs[v].typ==useri_cBLINE && configs[v].lines) {
@@ -1192,7 +1282,7 @@ extern char useri_configon(unsigned char v)
 } /* end configon() */
 
 
-static char configson(unsigned char v, unsigned long line)
+static char configson(uint8_t v, uint32_t line)
 {
    pCONFLINE pl;
    pl = configs[v].lines;
@@ -1205,26 +1295,84 @@ static char configson(unsigned char v, unsigned long line)
    return 0;
 } /* end configson() */
 
+
+static void linenoton(pCONFLINE pl)
+{
+   if (pl) pl->active = pl->active==0U;
+} /* end linenoton() */
+
+
+static void configdelman(uint8_t cfg, uint32_t num, uint32_t n)
+/* 1 on/off, 2 move to editline, 3 del, first n is 1 */
+{
+   pCONFLINE po;
+   pCONFLINE pl;
+   pl = 0;
+   if ((uint32_t)cfg<=155UL) pl = configs[cfg].lines;
+   po = 0;
+   while (n>1UL && pl) {
+      po = pl;
+      pl = pl->next;
+      --n;
+   }
+   if (pl) {
+      if (num==1UL) linenoton(pl);
+      else if (num==2UL || num==3UL) {
+         if (po) po->next = pl->next;
+         else configs[cfg].lines = pl->next;
+         if (num==2UL) {
+            icfg(useri_fEDITLINE, pl->line, 201ul);
+                /* save deleted to editline */
+         }
+         osic_free((char * *) &pl, sizeof(struct CONFLINE));
+      }
+   }
+   useri_refresh = 1;
+} /* end configdelman() */
+
+
+static void updatepoisyms(void)
+{
+   uint32_t i;
+   char s[1000];
+   for (;;) {
+      useri_confstrings(useri_fPOISMBOLS, 0UL, 1, s, 1000ul);
+      if (s[0U]==0) break;
+      configdelman(useri_fPOISMBOLS, 3UL, 0UL);
+   }
+   i = 0UL;
+   while (i<=29UL && aprsdecode_poifiles[i].name[0UL]) {
+      if (aprsdecode_poifiles[i].symbol[0UL]!='/' || aprsdecode_poifiles[i]
+                .symbol[1UL]!='/') {
+         aprsstr_Assign(s, 1000ul, aprsdecode_poifiles[i].symbol, 2ul);
+         aprsstr_Append(s, 1000ul, aprsdecode_poifiles[i].name, 10ul);
+         useri_AddConfLine(useri_fPOISMBOLS, 0U, s, 1000ul);
+      }
+      ++i;
+   }
+} /* end updatepoisyms() */
+
 #define useri_ESC0 "~"
 
 
 extern void useri_saveconfig(void)
 {
-   long fd;
+   int32_t fd;
    char backupfn[1000];
    char h[1000];
-   unsigned char i;
+   uint8_t i;
    pCONFLINE pl;
-   unsigned long j;
-   unsigned long n;
+   uint32_t j;
+   uint32_t n;
    char c;
-   unsigned long tmp;
+   uint32_t tmp;
    if (aprsdecode_click.marktime==0UL) {
       aprstext_postostr(aprsdecode_click.markpos, '3', h, 1000ul);
    }
    else h[0] = 0;
    useri_AddConfLine(useri_fMARKPOS, 1U, h, 1000ul);
    aprsstr_cleanfilename(aprsdecode_lums.configfn, 257ul);
+   updatepoisyms();
    /*
      IF Exists(lums.configfn) THEN                                (* make config backup *)
        Assign(backupfn, lums.configfn); Append(backupfn, "~");
@@ -1236,8 +1384,9 @@ extern void useri_saveconfig(void)
                 /* write temp file and rename later */
    fd = osi_OpenWrite(backupfn, 1000ul);
    if (!osic_FdValid(fd)) {
-      strncpy(h,"Can not write ",1000u);
+      strncpy(h,"\012Can not write ",1000u);
       aprsstr_Append(h, 1000ul, backupfn, 1000ul);
+      aprsstr_Append(h, 1000ul, "\012", 2ul);
       useri_textautosize(0L, 0L, 6UL, 4UL, 'e', h, 1000ul);
       useri_refresh = 1;
       return;
@@ -1274,9 +1423,9 @@ extern void useri_saveconfig(void)
                j = 0UL;
                while (j<200UL && pl->line[j]) {
                   c = pl->line[j];
-                  if ((unsigned char)c<' ') {
+                  if ((uint8_t)c<' ') {
                      aprsstr_Append(h, 1000ul, "~", 2ul);
-                     c = (char)((unsigned long)(unsigned char)c+64UL);
+                     c = (char)((uint32_t)(uint8_t)c+64UL);
                   }
                   else if (c=='|') {
                      aprsstr_Append(h, 1000ul, "~", 2ul);
@@ -1302,7 +1451,7 @@ extern void useri_saveconfig(void)
 } /* end saveconfig() */
 
 
-static void conflineno(unsigned char v, unsigned long lineno, char all,
+static void conflineno(uint8_t v, uint32_t lineno, char all,
                 pCONFLINE * pl)
 {
    *pl = configs[v].lines;
@@ -1317,8 +1466,8 @@ static void conflineno(unsigned char v, unsigned long lineno, char all,
 } /* end conflineno() */
 
 
-extern void useri_confstrings(unsigned char v, unsigned long lineno,
-                char all, char s[], unsigned long s_len)
+extern void useri_confstrings(uint8_t v, uint32_t lineno,
+                char all, char s[], uint32_t s_len)
 {
    pCONFLINE pl;
    conflineno(v, lineno, all, &pl);
@@ -1327,13 +1476,13 @@ extern void useri_confstrings(unsigned char v, unsigned long lineno,
 } /* end confstrings() */
 
 
-extern void useri_confstr(unsigned char v, char s[], unsigned long s_len)
+extern void useri_confstr(uint8_t v, char s[], uint32_t s_len)
 {
    useri_confstrings(v, 0UL, 1, s, s_len);
 } /* end confstr() */
 
 
-extern unsigned char useri_confflags(unsigned char v, unsigned long lineno)
+extern uint8_t useri_confflags(uint8_t v, uint32_t lineno)
 {
    pCONFLINE pl;
    if (configs[v].typ==useri_cBLIST || configs[v].typ==useri_cLIST) {
@@ -1350,14 +1499,14 @@ extern unsigned char useri_confflags(unsigned char v, unsigned long lineno)
 
 extern void useri_loadconfig(char verb)
 {
-   long fd;
+   int32_t fd;
    char s[1000];
    char h[1000];
-   unsigned char i;
+   uint8_t i;
    char c;
-   unsigned long j;
-   unsigned long titmod;
-   unsigned char on;
+   uint32_t j;
+   uint32_t titmod;
+   uint8_t on;
    initconfig();
    titmod = 0UL;
    aprsstr_cleanfilename(aprsdecode_lums.configfn, 257ul);
@@ -1375,8 +1524,8 @@ extern void useri_loadconfig(char verb)
                      if (c=='~') {
                         ++j;
                         c = h[j];
-                        if ((unsigned char)c>='@' && (unsigned char)c<='`') {
-                           c = (char)((unsigned long)(unsigned char)c-64UL);
+                        if ((uint8_t)c>='@' && (uint8_t)c<='`') {
+                           c = (char)((uint32_t)(uint8_t)c-64UL);
                         }
                         else if (c=='/') c = '|';
                      }
@@ -1402,15 +1551,15 @@ extern void useri_loadconfig(char verb)
                   titmod = 1UL;
                   on = 0U;
                }
-               else if ((unsigned char)c>=' ') {
+               else if ((uint8_t)c>=' ') {
                   aprsstr_Append(h, 1000ul, (char *) &c, 1u/1u);
                }
                else titmod = 3UL;
             }
             else if (titmod==1UL) {
                if (c=='Y' || c=='y') on = 1U;
-               else if ((unsigned char)c>='0' && (unsigned char)c<='7') {
-                  on = (unsigned char)((unsigned long)(unsigned char)c-48UL);
+               else if ((uint8_t)c>='0' && (uint8_t)c<='7') {
+                  on = (uint8_t)((uint32_t)(uint8_t)c-48UL);
                }
                else if (c=='|') {
                   titmod = 2UL;
@@ -1418,7 +1567,7 @@ extern void useri_loadconfig(char verb)
                }
             }
             else if (titmod==2UL) {
-               if ((unsigned char)c<' ') titmod = 3UL;
+               if ((uint8_t)c<' ') titmod = 3UL;
                else aprsstr_Append(h, 1000ul, (char *) &c, 1u/1u);
             }
          }
@@ -1426,8 +1575,9 @@ extern void useri_loadconfig(char verb)
       osic_Close(fd);
    }
    else {
-      strncpy(h,"Can not read ",1000u);
+      strncpy(h,"\012Can not read ",1000u);
       aprsstr_Append(h, 1000ul, aprsdecode_lums.configfn, 257ul);
+      aprsstr_Append(h, 1000ul, "\012", 2ul);
       useri_textautosize(0L, 0L, 6UL, 10UL, 'e', h, 1000ul);
       useri_refresh = 1;
       if (verb) osi_WrStrLn(h, 1000ul);
@@ -1435,11 +1585,11 @@ extern void useri_loadconfig(char verb)
    useri_rdlums();
    useri_confstr(useri_fMAPNAMES, s, 1000ul);
    if (s[0U]==0) {
-      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles -128", 11ul);
-      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_topo -128", 16ul);
-      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_quest -128", 17ul);
-      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_cyclemap 0", 17ul);
-      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_sat 0", 12ul);
+      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles 0.25 25", 14ul);
+      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_topo 0.25 25", 19ul);
+      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_cyclemap 0.25 25", 23ul);
+      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_sat 0.45 100", 19ul);
+      useri_AddConfLine(useri_fMAPNAMES, 1U, "tiles_quest 0.25 25", 20ul);
    }
    /*  confstr(fDIGI, s); */
    /*  IF s[0]=0C THEN AddConfLine(fDIGI, 0,
@@ -1448,22 +1598,23 @@ extern void useri_loadconfig(char verb)
    useri_confstr(useri_fQUERYS, s, 1000ul);
    if (s[0U]==0) {
       useri_AddConfLine(useri_fQUERYS, 1U, "?APRST:PATH=\\\\p", 16ul);
-      useri_AddConfLine(useri_fQUERYS, 1U, "?PING:PATH=\\\\p", 15ul);
+      useri_AddConfLine(useri_fQUERYS, 1U, "?PING?:PATH=\\\\p", 16ul);
       useri_AddConfLine(useri_fQUERYS, 1U, "?APRSP:\\\\l", 11ul);
       useri_AddConfLine(useri_fQUERYS, 1U, "?VER:VERSION \\\\v", 17ul);
-      useri_AddConfLine(useri_fQUERYS, 1U, "?HELP:?APRST,?APRSP,?PING,?VER",
-                31ul);
+      useri_AddConfLine(useri_fQUERYS, 1U, "?HELP:?APRST,?APRSP,?PING?,?VER",
+                 32ul);
    }
    useri_confstr(useri_fMARKPOS, s, 1000ul);
    aprstext_deghtopos(s, 1000ul, &aprsdecode_click.markpos);
-   maptool_closesrtmfile(); /* to reread possibly updated files */
-   maptool_rdmountains("poi.txt", 8ul, 0);
-                /* to reread possibly updated file */
-   maptool_rdmountains("mypoi.txt", 10ul, 1);
+   libsrtm_closesrtmfile(); /* to reread possibly updated files */
+   /*  rdmountains(POIFILENAME, FALSE);
+                (* to reread possibly updated file *) */
+   /*  rdmountains(MYPOIFILENAME, TRUE); */
+   maptool_readpoifiles();
 } /* end loadconfig() */
 
 
-extern void useri_confappend(unsigned char v, char s[], unsigned long s_len)
+extern void useri_confappend(uint8_t v, char s[], uint32_t s_len)
 /* append a config line to string */
 {
    char h[1000];
@@ -1472,8 +1623,8 @@ extern void useri_confappend(unsigned char v, char s[], unsigned long s_len)
 } /* end confappend() */
 
 
-static void confreplace(unsigned char v, unsigned long lineno, char all,
-                const char s[], unsigned long s_len)
+static void confreplace(uint8_t v, uint32_t lineno, char all,
+                const char s[], uint32_t s_len)
 {
    pCONFLINE pl;
    conflineno(v, lineno, all, &pl);
@@ -1481,7 +1632,7 @@ static void confreplace(unsigned char v, unsigned long lineno, char all,
 } /* end confreplace() */
 
 
-extern void useri_configbool(unsigned char v, char on)
+extern void useri_configbool(uint8_t v, char on)
 /* set config to TRUE OR FALSE */
 {
    configs[v].on = on;
@@ -1492,14 +1643,14 @@ extern void useri_configbool(unsigned char v, char on)
 } /* end configbool() */
 
 
-static void configtogg(unsigned char v)
+static void configtogg(uint8_t v)
 /* invert TRUE and FALSE of a config */
 {
    useri_configbool(v, !useri_configon(v));
 } /* end configtogg() */
 
 
-extern char useri_isupdated(unsigned char v)
+extern char useri_isupdated(uint8_t v)
 {
    char u;
    u = configs[v].updated;
@@ -1508,7 +1659,7 @@ extern char useri_isupdated(unsigned char v)
 } /* end isupdated() */
 
 
-extern void useri_setview(long n, char s[], unsigned long s_len)
+extern void useri_setview(int32_t n, char s[], uint32_t s_len)
 {
    pCONFLINE pl;
    X2C_PCOPY((void **)&s,s_len);
@@ -1535,16 +1686,16 @@ extern void useri_setview(long n, char s[], unsigned long s_len)
 } /* end setview() */
 
 
-static void alloccutbuf(unsigned long len)
+static void alloccutbuf(uint32_t len)
 {
    if (xosi_cutbuffer.text) {
       useri_debugmem.screens -= xosi_cutbuffer.cutlen;
-      osic_free((X2C_ADDRESS *) &xosi_cutbuffer.text, xosi_cutbuffer.cutlen);
+      osic_free((char * *) &xosi_cutbuffer.text, xosi_cutbuffer.cutlen);
    }
    xosi_cutbuffer.text = 0;
    xosi_cutbuffer.cutlen = len;
    if (xosi_cutbuffer.cutlen>0UL) {
-      osic_alloc((X2C_ADDRESS *) &xosi_cutbuffer.text,
+      osic_alloc((char * *) &xosi_cutbuffer.text,
                 xosi_cutbuffer.cutlen);
       useri_debugmem.req = xosi_cutbuffer.cutlen;
       useri_debugmem.screens += useri_debugmem.req;
@@ -1557,11 +1708,11 @@ static void alloccutbuf(unsigned long len)
 } /* end alloccutbuf() */
 
 
-extern void useri_copypaste(char s[], unsigned long s_len)
+extern void useri_copypaste(char s[], uint32_t s_len)
 {
-   unsigned long i;
-   unsigned long len;
-   unsigned long tmp;
+   uint32_t i;
+   uint32_t len;
+   uint32_t tmp;
    len = aprsstr_Length(s, s_len);
    if (len>0UL) {
       alloccutbuf(len);
@@ -1576,7 +1727,7 @@ extern void useri_copypaste(char s[], unsigned long s_len)
 } /* end copypaste() */
 
 
-extern void useri_postoconfig(struct aprspos_POSITION pos)
+extern void useri_postoconfig(struct aprsstr_POSITION pos)
 /* copy position to editline */
 {
    char s[100];
@@ -1594,15 +1745,16 @@ extern void useri_postoconfig(struct aprspos_POSITION pos)
 } /* end postoconfig() */
 
 
-extern void useri_conf2str(unsigned char v, unsigned long valnum, char s[],
-                unsigned long s_len)
+extern void useri_conf2str(uint8_t v, uint32_t linenum,
+                uint32_t valnum, char all, char s[],
+                uint32_t s_len)
 {
-   unsigned long i;
-   useri_confstr(v, s, s_len);
+   uint32_t i;
+   useri_confstrings(v, linenum, all, s, s_len);
    for (;;) {
       while (s[0UL]==' ') aprsstr_Delstr(s, s_len, 0UL, 1UL);
       i = 0UL;
-      while (i<s_len-1 && (unsigned char)s[i]>' ') ++i;
+      while (i<s_len-1 && (uint8_t)s[i]>' ') ++i;
       if (s[0UL]==0 || valnum==0UL) {
          s[i] = 0;
          break;
@@ -1613,15 +1765,15 @@ extern void useri_conf2str(unsigned char v, unsigned long valnum, char s[],
 } /* end conf2str() */
 
 
-extern long useri_conf2int(unsigned char v, unsigned long valnum, long min0,
-                long max0, long default0)
+extern int32_t useri_conf2int(uint8_t v, uint32_t valnum,
+                int32_t min0, int32_t max0, int32_t default0)
 {
    float rval;
-   long n;
+   int32_t n;
    char s[51];
-   useri_conf2str(v, valnum, s, 51ul);
+   useri_conf2str(v, 0UL, valnum, 1, s, 51ul);
    if (aprsstr_StrToFix(&rval, s, 51ul)) {
-      n = (long)aprsdecode_trunc((float)fabs(rval));
+      n = (int32_t)aprsdecode_trunc((float)fabs(rval));
       if (rval<0.0f) n = -n;
    }
    else n = default0;
@@ -1631,12 +1783,12 @@ extern long useri_conf2int(unsigned char v, unsigned long valnum, long min0,
 } /* end conf2int() */
 
 
-extern float useri_conf2real(unsigned char v, unsigned long valnum,
+extern float useri_conf2real(uint8_t v, uint32_t valnum,
                 float min0, float max0, float default0)
 {
    float r;
    char s[51];
-   useri_conf2str(v, valnum, s, 51ul);
+   useri_conf2str(v, 0UL, valnum, 1, s, 51ul);
    if (!aprsstr_StrToFix(&r, s, 51ul)) r = default0;
    if (r<min0) return min0;
    if (r>max0) return max0;
@@ -1644,13 +1796,13 @@ extern float useri_conf2real(unsigned char v, unsigned long valnum,
 } /* end conf2real() */
 
 
-static unsigned long cntconfigs(unsigned char v)
+static uint32_t cntconfigs(uint8_t v, char all)
 {
-   unsigned long n;
+   uint32_t n;
    char s[201];
    n = 0UL;
    for (;;) {
-      useri_confstrings(v, n, 1, s, 201ul);
+      useri_confstrings(v, n, all, s, 201ul);
       if (s[0U]==0) break;
       ++n;
    }
@@ -1667,10 +1819,10 @@ static void clreditline(void)
 } /* end clreditline() */
 
 
-static void DelCharStr(char s[], unsigned long s_len, char c)
+static void DelCharStr(char s[], uint32_t s_len, char c)
 {
-   unsigned long j;
-   unsigned long i;
+   uint32_t j;
+   uint32_t i;
    i = 0UL;
    j = 0UL;
    while (i<=s_len-1 && s[i]) {
@@ -1684,11 +1836,11 @@ static void DelCharStr(char s[], unsigned long s_len, char c)
 } /* end DelCharStr() */
 
 
-static void toggcfg(unsigned char v, char c, const char del[],
-                unsigned long del_len)
+static void toggcfg(uint8_t v, char c, const char del[],
+                uint32_t del_len)
 /* toggle chars in config string */
 {
-   unsigned long i;
+   uint32_t i;
    char on;
    char s[301];
    useri_confstr(v, s, 301ul);
@@ -1707,14 +1859,11 @@ static void toggcfg(unsigned char v, char c, const char del[],
 } /* end toggcfg() */
 
 
-extern void useri_ColConfset(struct aprsdecode_COLTYP * c, unsigned char v)
+extern void useri_ColConfset(struct aprsdecode_COLTYP * c, uint8_t v)
 {
-   c->r = (unsigned long)((useri_conf2int(v, 0UL, 0L, 100L,
-                100L)*256L)/100L);
-   c->g = (unsigned long)((useri_conf2int(v, 1UL, 0L, 100L,
-                100L)*256L)/100L);
-   c->b = (unsigned long)((useri_conf2int(v, 2UL, 0L, 100L,
-                100L)*256L)/100L);
+   c->r = (uint32_t)((useri_conf2int(v, 0UL, 0L, 100L, 100L)*256L)/100L);
+   c->g = (uint32_t)((useri_conf2int(v, 1UL, 0L, 100L, 100L)*256L)/100L);
+   c->b = (uint32_t)((useri_conf2int(v, 2UL, 0L, 100L, 100L)*256L)/100L);
    if (c->r+c->g+c->b<100UL) {
       c->r = 256UL; /* no self knocking out */
       c->g = 256UL;
@@ -1723,28 +1872,28 @@ extern void useri_ColConfset(struct aprsdecode_COLTYP * c, unsigned char v)
 } /* end ColConfset() */
 
 
-extern unsigned long useri_localtime(void)
+extern uint32_t useri_localtime(void)
 {
-   return (unsigned long)(useri_conf2int(useri_fLOCALTIME, 0UL, -24L, 24L,
+   return (uint32_t)(useri_conf2int(useri_fLOCALTIME, 0UL, -24L, 24L,
                 0L)*3600L);
 } /* end localtime() */
 
 
-extern void useri_getview(unsigned char v, unsigned long n, float * zoom,
-                struct aprspos_POSITION * pos)
+extern void useri_getview(uint8_t v, uint32_t n, float * zoom,
+                struct aprsstr_POSITION * pos)
 {
    float rval;
-   struct aprspos_POSITION rpos;
+   struct aprsstr_POSITION rpos;
    char h[101];
    char s[101];
-   unsigned long j;
-   unsigned long i;
+   uint32_t j;
+   uint32_t i;
    useri_confstrings(v, n, 1, s, 101ul);
    s[100U] = 0;
    while (s[0U]) {
       j = 0UL;
       i = 0UL;
-      while ((unsigned char)s[i]>' ') {
+      while ((uint8_t)s[i]>' ') {
          h[j] = s[i];
          ++j;
          ++i;
@@ -1752,13 +1901,13 @@ extern void useri_getview(unsigned char v, unsigned long n, float * zoom,
       h[j] = 0;
       j = 0UL;
       while (s[i]==' ') ++i;
-      while ((unsigned char)s[i]>' ') {
+      while ((uint8_t)s[i]>' ') {
          s[j] = s[i];
          ++j;
          ++i;
       }
       s[j] = 0;
-      maptool_loctopos(&rpos, h, 101ul);
+      aprsstr_loctopos(&rpos, h, 101ul);
       if (!aprspos_posvalid(rpos)) aprstext_degtopos(h, 101ul, &rpos);
       if (!aprspos_posvalid(rpos)) {
          if (aprsstr_StrToFix(&rval, h, 101ul)) {
@@ -1772,38 +1921,88 @@ extern void useri_getview(unsigned char v, unsigned long n, float * zoom,
 } /* end getview() */
 
 
-extern void useri_Setmap(unsigned long n)
+static float getingamma(void)
 {
    char s[101];
-   unsigned long i;
    float lu;
-   i = 0UL;
-   for (;;) {
-      /* count lines for reverse sort access */
-      useri_confstrings(useri_fMAPNAMES, i, 0, s, 101ul);
-      if (s[0U]==0) break;
-      ++i;
+   useri_conf2str(useri_fMAPNAMES, aprsdecode_lums.mapnum, 1UL, 0, s, 101ul);
+   if ((!aprsstr_StrToFix(&lu, s, 101ul) || lu>10.0f) || lu<0.01f) {
+      lu = 0.45f;
+   }
+   return lu;
+} /* end getingamma() */
+
+
+extern void useri_mapbritocfg(void)
+{
+   char h[101];
+   char s[101];
+   useri_conf2str(useri_fMAPNAMES, aprsdecode_lums.mapnum, 0UL, 0, s, 101ul);
+                 /* map name */
+   aprsstr_Append(s, 101ul, " ", 2ul);
+   aprsstr_FixToStr(getingamma(), 3UL, h, 101ul); /* map gamma */
+   aprsstr_Append(s, 101ul, h, 101ul);
+   aprsstr_Append(s, 101ul, " ", 2ul);
+   aprsstr_CardToStr((uint32_t)useri_conf2int(useri_fLMAP, 0UL, 0L, 100L,
+                25L), 0UL, h, 101ul); /* map brightness */
+   aprsstr_Append(s, 101ul, h, 101ul);
+   confreplace(useri_fMAPNAMES, aprsdecode_lums.mapnum, 0, s, 101ul);
+} /* end mapbritocfg() */
+
+
+extern void useri_Setmap(uint32_t n)
+/* MAX(INT) is use next */
+{
+   char hh[101];
+   char h[101];
+   char s[101];
+   uint32_t li;
+   uint32_t i;
+   float lu;
+   i = cntconfigs(useri_fMAPNAMES, 0);
+                /* count lines for reverse sort access */
+   if (n>=2147483647UL) {
+      /* cycle thru maps */
+      n = aprsdecode_lums.mapnum;
+      if (n>=i) n = 0UL;
+      if (n) n = i-n;
    }
    if (n<i) {
-      useri_confstrings(useri_fMAPNAMES, (i-n)-1UL, 0, s, 101ul);
+      /* name */
+      aprsdecode_lums.mapnum = (i-n)-1UL;
+      useri_conf2str(useri_fMAPNAMES, aprsdecode_lums.mapnum, 0UL, 0, s,
+                101ul);
       i = 0UL;
-      while ((i<100UL && i<40UL) && (unsigned char)s[i]>' ') {
+      while ((i<100UL && i<40UL) && (uint8_t)s[i]>' ') {
          aprsdecode_lums.mapname[i] = s[i];
          ++i;
       }
       aprsdecode_lums.mapname[i] = 0;
-      while (i<100UL && s[i]==' ') ++i;
-      aprsstr_Delstr(s, 101ul, 0UL, i);
-      if (aprsstr_StrToFix(&lu, s, 101ul) && (float)fabs(lu)<256.0f) {
-         aprsdecode_lums.maplumcorr = (long)X2C_TRUNCI(lu,X2C_min_longint,
-                X2C_max_longint);
+      strncpy(h,"Map:[",101u);
+      aprsstr_Append(h, 101ul, aprsdecode_lums.mapname, 41ul);
+      /* gamma */
+      lu = getingamma();
+      useri_Tilegamma0(lu);
+      aprsstr_Append(h, 101ul, "] Gamma:", 9ul);
+      aprsstr_FixToStr(lu, 3UL, hh, 101ul);
+      aprsstr_Append(h, 101ul, hh, 101ul);
+      /* bright */
+      useri_conf2str(useri_fMAPNAMES, aprsdecode_lums.mapnum, 2UL, 0, s,
+                101ul);
+      if ((!aprsstr_StrToCard(s, 101ul, &li) || li<0UL) || li>100UL) {
+         li = 25UL;
       }
-      else aprsdecode_lums.maplumcorr = -128L;
+      useri_int2cfg(useri_fLMAP, (int32_t)li);
+      aprsstr_Append(h, 101ul, " Brightness:", 13ul);
+      aprsstr_IntToStr((int32_t)li, 0UL, hh, 101ul);
+      aprsstr_Append(h, 101ul, hh, 101ul);
+      useri_say(h, 101ul, 4UL, 'b');
+      useri_rdlums();
    }
 } /* end Setmap() */
 
 
-extern void useri_saveXYtocfg(unsigned char c, long x, long y)
+extern void useri_saveXYtocfg(uint8_t c, int32_t x, int32_t y)
 {
    char h[101];
    char s[101];
@@ -1815,18 +2014,24 @@ extern void useri_saveXYtocfg(unsigned char c, long x, long y)
 } /* end saveXYtocfg() */
 
 
-extern void useri_xerrmsg(char s[], unsigned long s_len)
+extern void useri_xerrmsg(char s[], uint32_t s_len)
 {
+   char h[2001];
    X2C_PCOPY((void **)&s,s_len);
-   useri_textautosize(0L, 0L, 6UL, 0UL, 'e', s, s_len);
+   if (s[0UL]) {
+      strncpy(h,"\012",2001u);
+      aprsstr_Append(h, 2001ul, s, s_len);
+      aprsstr_Append(h, 2001ul, "\012", 2ul);
+      useri_textautosize(0L, 0L, 6UL, 0UL, 'e', h, 2001ul);
+   }
    X2C_PFREE(s);
 } /* end xerrmsg() */
 
 
 extern void useri_rdlums(void)
 {
-   unsigned long n;
-   aprsdecode_lums.map = 10L*useri_conf2int(useri_fLMAP, 0UL, 0L, 100L, 30L);
+   uint32_t n;
+   aprsdecode_lums.map = 10L*useri_conf2int(useri_fLMAP, 0UL, 0L, 100L, 25L);
    aprsdecode_lums.rfbri = 10L*useri_conf2int(useri_fLRF, 0UL, 0L, 100L,
                 30L);
    aprsdecode_lums.track = 10L*useri_conf2int(useri_fLTRACK, 0UL, 0L, 100L,
@@ -1842,22 +2047,20 @@ extern void useri_rdlums(void)
                 9L);
    aprsdecode_lums.centering = useri_conf2int(useri_fCENTER, 0UL, 0L, 100L,
                 40L);
-   aprsdecode_lums.purgetime = (unsigned long)
-                (60L*useri_conf2int(useri_fTPURGE, 0UL, 0L, 35791394L,
-                1500L));
-   aprsdecode_lums.purgetimeobj = (unsigned long)
+   aprsdecode_lums.purgetime = (uint32_t)(60L*useri_conf2int(useri_fTPURGE,
+                 0UL, 0L, 35791394L, 1500L));
+   aprsdecode_lums.purgetimeobj = (uint32_t)
                 (60L*useri_conf2int(useri_fTPURGEOBJ, 0UL, 0L, 35791394L,
                 1500L));
-   aprsdecode_lums.firstdim = (unsigned long)
-                (60L*useri_conf2int(useri_fTFULL, 0UL, 0L, 35791394L,
-                1410L));
-   aprsdecode_lums.maxdim = (unsigned long)(60L*useri_conf2int(useri_fTFADE,
+   aprsdecode_lums.firstdim = (uint32_t)(60L*useri_conf2int(useri_fTFULL,
+                0UL, 0L, 35791394L, 1410L));
+   aprsdecode_lums.maxdim = (uint32_t)(60L*useri_conf2int(useri_fTFADE,
                 0UL, 0L, 35791394L, 30L));
-   aprsdecode_lums.kmhtime = (unsigned long)useri_conf2int(useri_fKMHTIME,
-                0UL, 0L, X2C_max_longint, 600L);
-   aprsdecode_lums.movestep = (unsigned long)useri_conf2int(useri_fMOVESTEP,
+   aprsdecode_lums.kmhtime = (uint32_t)useri_conf2int(useri_fKMHTIME, 0UL,
+                0L, X2C_max_longint, 600L);
+   aprsdecode_lums.movestep = (uint32_t)useri_conf2int(useri_fMOVESTEP,
                 0UL, 1L, 100L, 10L);
-   aprsdecode_lums.dupemaxtime = (unsigned long)
+   aprsdecode_lums.dupemaxtime = (uint32_t)
                 (60L*useri_conf2int(useri_fDUPDEL, 0UL, 0L, 1440L, 180L));
    aprsdecode_lums.gamma = useri_conf2real(useri_fGAMMA, 0UL, 0.1f, 10.0f,
                 2.2f);
@@ -1865,7 +2068,7 @@ extern void useri_rdlums(void)
    aprsdecode_lums.moded = 0;
    aprsdecode_lums.menutransp = useri_configon(useri_fTRANSP);
    useri_ColConfset(&aprsdecode_lums.menubackcol, useri_fCOLMENUBACK);
-   n = (unsigned long)useri_conf2int(useri_fTRANSP, 0UL, 0L, 100L, 60L);
+   n = (uint32_t)useri_conf2int(useri_fTRANSP, 0UL, 0L, 100L, 60L);
    if (n==0UL) n = 100UL;
    if (aprsdecode_lums.menutransp) n = n*2UL;
    aprsdecode_lums.menubackcol.r = (aprsdecode_lums.menubackcol.r*n)/100UL;
@@ -1875,33 +2078,75 @@ extern void useri_rdlums(void)
    if ((aprsdecode_lums.menubackcol.g&1)) --aprsdecode_lums.menubackcol.g;
    useri_ColConfset(&aprsdecode_lums.menucol, useri_fCOLMENUTEXT);
    if ((aprsdecode_lums.menucol.g&1)) --aprsdecode_lums.menucol.g;
+   useri_confstr(useri_fOSMDIR, libsrtm_srtmdir, 1024ul);
 } /* end rdlums() */
 
-static aprsdecode_SET256 _cnst = {0x00000000UL,0x03FF8000UL,0x17FFFFFEUL,
+static aprsdecode_SET256 _cnst1 = {0x00000000UL,0x03FF8000UL,0x17FFFFFEUL,
                 0x07FFFFFEUL,0x00000000UL,0x00000000UL,0x00000000UL,
                 0x00000000UL};
+static aprsdecode_SYMBOLSET _cnst0 = {0x00000000UL,0x00000000UL,0x00000000UL,
+                0x00000000UL,0x00000000UL,0x00000000UL};
 
-extern void useri_rdonesymb(char on)
+extern void useri_rdonesymb(char on, char say)
+/* configline to symbol filter set*/
 {
-   char s[31];
-   if (on) {
-      useri_confstr(useri_fONESYMB, s, 31ul);
-      if (X2C_INL((unsigned char)s[0U],256,_cnst)) {
+   char s[100];
+   uint32_t cnt;
+   uint32_t b;
+   uint32_t n;
+   uint32_t j;
+   uint32_t i;
+   memcpy(aprsdecode_click.onesymbolset,_cnst0,24u);
+   useri_confstr(useri_fONESYMB, s, 100ul);
+   cnt = 0UL;
+   if (aprsstr_Length(s, 100ul)>=50UL) {
+      memcpy(aprsdecode_click.onesymbolset,_cnst0,24u);
+      b = 0UL;
+      for (i = 2UL; i<=49UL; i++) {
+         n = (uint32_t)(uint8_t)s[i];
+         if (n<48UL) n = 0UL;
+         else n -= 48UL;
+         if (n>9UL) n -= 7UL;
+         for (j = 0UL; j<=3UL; j++) {
+            if ((n&1)) {
+               X2C_INCL(aprsdecode_click.onesymbolset,b,192);
+               ++cnt;
+            }
+            ++b;
+            n = n/2UL;
+         } /* end for */
+      } /* end for */
+   }
+   if (cnt==0UL) {
+      if (X2C_INL((uint8_t)s[0U],256,_cnst1)) {
          aprsdecode_click.onesymbol.tab = s[0U];
          aprsdecode_click.onesymbol.pic = s[1U];
       }
+      else aprsdecode_click.onesymbol.tab = 0;
+      strncpy(s,"Show One Symbol",100u);
    }
-   else aprsdecode_click.onesymbol.tab = 0;
-   useri_sayonoff("Show One Symbol", 16ul,
-                aprsdecode_click.onesymbol.tab!=0);
+   else {
+      aprsdecode_click.onesymbol.tab = '*';
+      aprsdecode_click.onesymbol.pic = ' ';
+      strncpy(s,"Symbol Filter",100u);
+   }
+   if (!on) aprsdecode_click.onesymbol.tab = 0;
+   if (say) useri_sayonoff(s, 100ul, aprsdecode_click.onesymbol.tab!=0);
 } /* end rdonesymb() */
 
 
-static void onoffm(maptool_pIMAGE img, long x0, long y00, char on)
+static void onoffm(maptool_pIMAGE img, int32_t x0, int32_t y00,
+                char on)
 {
-   long y;
-   long x;
+   int32_t yc;
+   int32_t xc;
+   int32_t ww;
+   int32_t w;
+   int32_t y;
+   int32_t x;
    struct maptool_PIX col;
+   int32_t tmp;
+   int32_t tmp0;
    if (on) {
       col.r = 100U;
       col.g = 999U;
@@ -1916,38 +2161,55 @@ static void onoffm(maptool_pIMAGE img, long x0, long y00, char on)
       x0 = -x0;
       col = img->Adr[(x0-5L)*img->Len0+(y00-5L)];
    }
-   for (y = -5L; y<=5L; y++) {
-      for (x = -5L; x<=5L; x++) {
-         if (x*x+y*y<25L) img->Adr[(x0+x)*img->Len0+(y00+y)] = col;
+   w = (int32_t)(aprsdecode_lums.fontxsize/2UL+3UL);
+   ww = w*w;
+   tmp = w;
+   y = -w;
+   if (y<=tmp) for (;; y++) {
+      tmp0 = w;
+      x = -w;
+      if (x<=tmp0) for (;; x++) {
+         if (x*x+y*y<ww) {
+            xc = x0+x;
+            yc = y00+y;
+            if (((xc>=0L && xc<(int32_t)(img->Len1-1)) && yc>=0L)
+                && yc<(int32_t)(img->Len0-1)) {
+               img->Adr[(xc)*img->Len0+yc] = col;
+            }
+         }
+         if (x==tmp0) break;
       } /* end for */
+      if (y==tmp) break;
    } /* end for */
 } /* end onoffm() */
 
 
-static long midy(pMENU m)
+static int32_t midy(pMENU m)
 /* middle y position of actual line */
 {
-   return (long)(m->oldknob*m->yknob-m->yknob/2UL);
+   return (int32_t)(m->oldknob*m->yknob-m->yknob/2UL);
 } /* end midy() */
 
 
-static void onoff(pMENU m, long x0, char on)
+static void onoff(pMENU m, int32_t x0, char on)
 {
    onoffm(m->image, x0, midy(m), on);
 } /* end onoff() */
 
 
-static void subicon(maptool_pIMAGE img, long x0, long y00, long dir,
-                long size)
+static void subicon(maptool_pIMAGE img, int32_t x0, int32_t y00,
+                int32_t dir, int32_t size)
 {
-   long h;
-   long yy;
-   long xx;
-   long x;
-   long y;
+   int32_t yc;
+   int32_t xc;
+   int32_t h;
+   int32_t yy;
+   int32_t xx;
+   int32_t x;
+   int32_t y;
    struct maptool_PIX col;
-   long tmp;
-   long tmp0;
+   int32_t tmp;
+   int32_t tmp0;
    col.r = 1000U;
    col.g = 1000U;
    col.b = 1000U;
@@ -1965,7 +2227,12 @@ static void subicon(maptool_pIMAGE img, long x0, long y00, long dir,
             xx = yy;
             yy = h;
          }
-         img->Adr[(x0+xx)*img->Len0+(y00+yy)] = col;
+         xc = x0+xx;
+         yc = y00+yy;
+         if (((xc>=0L && xc<(int32_t)(img->Len1-1)) && yc>=0L)
+                && yc<(int32_t)(img->Len0-1)) {
+            img->Adr[(xc)*img->Len0+yc] = col;
+         }
          if (x==tmp0) break;
       } /* end for */
       if (y==tmp) break;
@@ -1973,10 +2240,10 @@ static void subicon(maptool_pIMAGE img, long x0, long y00, long dir,
 } /* end subicon() */
 
 
-static void allocmenu(pMENU * m, unsigned long xsize, unsigned long ysize,
+static void allocmenu(pMENU * m, uint32_t xsize, uint32_t ysize,
                 char saveimage)
 {
-   osic_alloc((X2C_ADDRESS *)m, sizeof(struct MENU));
+   osic_alloc((char * *)m, sizeof(struct MENU));
    useri_debugmem.req = sizeof(struct MENU);
    useri_debugmem.menus += sizeof(struct MENU);
    if (*m==0) {
@@ -1985,7 +2252,7 @@ static void allocmenu(pMENU * m, unsigned long xsize, unsigned long ysize,
       return;
    }
    /*INC(menucnt); WrInt(menucnt, 3);WrStrLn("=menus+"); */
-   memset((X2C_ADDRESS)*m,(char)0,sizeof(struct MENU));
+   memset((char *)*m,(char)0,sizeof(struct MENU));
    (*m)->saveimage = saveimage;
    if (xsize==0UL || ysize==0UL) (*m)->image = 0;
    else if (saveimage && useri_panoimage) {
@@ -1993,7 +2260,7 @@ static void allocmenu(pMENU * m, unsigned long xsize, unsigned long ysize,
       useri_panoimage = 0;
    }
    else {
-      useri_allocimage(&(*m)->image, (long)xsize, (long)ysize,
+      useri_allocimage(&(*m)->image, (int32_t)xsize, (int32_t)ysize,
                 (*m)->saveimage);
       if ((*m)->image==0) {
          osi_WrStrLn("menuimage out of memory", 24ul);
@@ -2005,12 +2272,12 @@ static void allocmenu(pMENU * m, unsigned long xsize, unsigned long ysize,
 } /* end allocmenu() */
 
 
-static long popxbase(unsigned long y1)
+static int32_t popxbase(uint32_t y1)
 /* find right end of docked windows */
 {
    pMENU m;
-   unsigned long xm;
-   unsigned long x;
+   uint32_t xm;
+   uint32_t x;
    x = 0UL;
    if (aprsdecode_lums.headmenuy) {
       m = menus;
@@ -2025,11 +2292,11 @@ static long popxbase(unsigned long y1)
          m = m->next;
       }
    }
-   return (long)x;
+   return (int32_t)x;
 } /* end popxbase() */
 
 
-extern void useri_starthint(unsigned long num, char center)
+extern void useri_starthint(uint32_t num, char center)
 {
    hintnum = num;
    if (num>0UL) {
@@ -2060,7 +2327,7 @@ static void killmenus(pMENU from)
       }
       /*  IF from=actmenu THEN actmenu:=NIL END;  */
       useri_debugmem.menus -= sizeof(struct MENU);
-      osic_free((X2C_ADDRESS *) &from, sizeof(struct MENU));
+      osic_free((char * *) &from, sizeof(struct MENU));
       /*DEC(menucnt); WrInt(menucnt, 3);WrStrLn("=menus-"); */
       from = m;
    }
@@ -2072,7 +2339,6 @@ extern void useri_killallmenus(void)
 {
    killmenus(menus);
    aprsdecode_click.watchlast = 0;
-/*  IF newfont THEN loadfont; newfont:=FALSE END; */
 } /* end killallmenus() */
 
 
@@ -2102,7 +2368,7 @@ static void killmenu(pMENU km)
 } /* end killmenu() */
 
 
-static pMENU findmenuid(unsigned long id)
+static pMENU findmenuid(uint32_t id)
 {
    pMENU m;
    m = menus;
@@ -2114,7 +2380,7 @@ static pMENU findmenuid(unsigned long id)
 } /* end findmenuid() */
 
 
-extern void useri_killmenuid(unsigned long id)
+extern void useri_killmenuid(uint32_t id)
 {
    pMENU m;
    m = findmenuid(id);
@@ -2122,7 +2388,7 @@ extern void useri_killmenuid(unsigned long id)
 } /* end killmenuid() */
 
 
-static unsigned long mainxs(void)
+static uint32_t mainxs(void)
 {
    if (redrawimg==0) return 0UL;
    else return (redrawimg->Len1-1)+1UL;
@@ -2130,7 +2396,7 @@ static unsigned long mainxs(void)
 } /* end mainxs() */
 
 
-extern unsigned long useri_mainys(void)
+extern uint32_t useri_mainys(void)
 {
    if (redrawimg==0) return 0UL;
    else return (redrawimg->Len0-1)+1UL;
@@ -2149,7 +2415,7 @@ static pMENU lastmenu(void)
 
 static void joinmenux(pMENU m, pMENU menu)
 {
-   unsigned long xm;
+   uint32_t xm;
    if (m && menu->wid==0UL) {
       xm = menu->image->Len1-1; /* find x position */
       menu->x0 = (m->nowx+m->xsize)-2UL;
@@ -2165,8 +2431,8 @@ static void appendmenu(pMENU menu)
 {
    pMENU mh;
    pMENU m;
-   unsigned long ys;
-   unsigned long y;
+   uint32_t ys;
+   uint32_t y;
    if (menu->wid>0UL) useri_killmenuid(menu->wid);
    menu->next = 0;
    menu->oldknob = 0UL;
@@ -2198,7 +2464,27 @@ static void appendmenu(pMENU menu)
 } /* end appendmenu() */
 
 
-static unsigned long knobtexty(unsigned long yk)
+static int32_t microspace(const char c[], uint32_t c_len)
+{
+   uint32_t x;
+   uint32_t i;
+   x = 0UL;
+   i = 0UL;
+   while (i<=c_len-1 && c[i]) {
+      if ((uint8_t)c[i]>=(uint8_t)'\360' && (uint8_t)c[i]<=(uint8_t)
+                '\370') {
+         x += (((uint32_t)(uint8_t)c[i]-239UL)
+                *aprsdecode_lums.fontxsize+5UL)/6UL;
+      }
+      else if (c[i]=='\371') x += aprsdecode_lums.symsize;
+      else x += aprsdecode_lums.fontxsize;
+      ++i;
+   }
+   return (int32_t)x;
+} /* end microspace() */
+
+
+static uint32_t knobtexty(uint32_t yk)
 {
    if (yk<=aprsdecode_lums.fontysize) return 0UL;
    else return ((yk-aprsdecode_lums.fontysize)-1UL)/2UL;
@@ -2210,16 +2496,16 @@ static unsigned long knobtexty(unsigned long yk)
 #define useri_MW 200
 
 
-static void addline(pMENU m, const char s[], unsigned long s_len, char c[],
-                unsigned long c_len, unsigned long hint)
+static void addline(pMENU m, const char s[], uint32_t s_len,
+                char c[], uint32_t c_len, uint32_t hint)
 {
-   unsigned long dimm;
-   unsigned long mark;
-   unsigned long sk;
-   unsigned long si;
-   unsigned long i;
-   unsigned long y;
-   unsigned long x;
+   uint32_t dimm;
+   uint32_t mark;
+   uint32_t sk;
+   uint32_t si;
+   uint32_t i;
+   uint32_t y;
+   uint32_t x;
    struct aprsdecode_COLTYP colc;
    struct aprsdecode_COLTYP col;
    char h[1001];
@@ -2232,8 +2518,8 @@ static void addline(pMENU m, const char s[], unsigned long s_len, char c[],
    char highlitewholline;
    struct maptool_PIX * anonym;
    maptool_pIMAGE anonym0;
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    X2C_PCOPY((void **)&c,c_len);
    i = 0UL;
    x = 0UL;
@@ -2241,24 +2527,23 @@ static void addline(pMENU m, const char s[], unsigned long s_len, char c[],
    dimm = 1000UL;
    highlitewholline = 0;
    mark = X2C_max_longcard;
-   m->nohilite &= ~(1UL<<m->oldknob);
+   X2C_EXCL(m->nohilite,m->oldknob,61);
    mmr = 200;
    mmg = 10;
    mmb = 10;
    while ((i<=s_len-1 && s[i]) && si<=20UL) {
       if (s[i]=='|') {
-         m->subk[m->oldknob][si] = (unsigned short)x;
+         m->subk[m->oldknob][si] = (uint16_t)x;
          ++si;
       }
-      else if ((unsigned char)s[i]>=(unsigned char)'\360' && (unsigned char)
-                s[i]<=(unsigned char)'\370') {
-         /*WrInt(x,10);WrInt(si,10);WrStr(s);WrStrLn(" x-si"); */
-         x += (unsigned long)(unsigned char)s[i]-239UL;
-      }
-      else if ((unsigned char)s[i]>=(unsigned char)'\346' && (unsigned char)
-                s[i]<=(unsigned char)'\357') {
-         if (s[i]=='\346') m->noprop |= (1UL<<m->oldknob);
-         else if (s[i]=='\351') m->nohilite |= (1UL<<m->oldknob);
+      else if ((uint8_t)s[i]>=(uint8_t)'\346' && (uint8_t)
+                s[i]<=(uint8_t)'\357') {
+         /*  ELSIF (s[i]>=SP1) & (s[i]<=SP9) THEN INC(x,
+                (ORD(s[i])-(ORD(SP1)-1))*CHARWIDTH DIV 6); */
+         /*  ELSIF s[i]=SPS THEN INC(x, lums.symsize);
+                (* space symbol size *)  */
+         if (s[i]=='\346') X2C_INCL(m->noprop,m->oldknob,61);
+         else if (s[i]=='\351') X2C_INCL(m->nohilite,m->oldknob,61);
          else if (s[i]=='\350') mark = si;
          else if (s[i]=='\352') mark = 0x0FFFFFFFEUL;
          else if (s[i]=='\347') {
@@ -2274,7 +2559,8 @@ static void addline(pMENU m, const char s[], unsigned long s_len, char c[],
          else if (s[i]=='\356') dimm = 400UL;
          else if (s[i]=='\357') highlitewholline = 1;
       }
-      else x += 6UL;
+      else x += (uint32_t)microspace((char *) &s[i], 1u/1u);
+      /*  ELSE INC(x, CHARWIDTH) END; */
       ++i;
    }
    if (si<=20UL) m->subk[m->oldknob][si] = 0U;
@@ -2318,17 +2604,17 @@ static void addline(pMENU m, const char s[], unsigned long s_len, char c[],
                anonym->b = 200U;
             }
             else if (mark==0x0FFFFFFFEUL || si==mark) {
-               anonym->r = (unsigned short)mmr;
-               anonym->g = (unsigned short)mmg;
-               anonym->b = (unsigned short)mmb;
+               anonym->r = (uint16_t)mmr;
+               anonym->g = (uint16_t)mmg;
+               anonym->b = (uint16_t)mmb;
             }
             else {
-               anonym->r = (unsigned short)mbr;
-               anonym->g = (unsigned short)mbg;
-               anonym->b = (unsigned short)mbb;
+               anonym->r = (uint16_t)mbr;
+               anonym->g = (uint16_t)mbg;
+               anonym->b = (uint16_t)mbb;
             }
             if (sk>0UL) --sk;
-            i = (unsigned long)m->subk[m->oldknob][si];
+            i = (uint32_t)m->subk[m->oldknob][si];
             if (i>1UL && i-2UL<=x) {
                /*          IF m^.oldknob IN m^.noprop THEN r:=100; g:=100;
                 b:=100 ELSE sk:=2 END; */
@@ -2352,25 +2638,25 @@ static void addline(pMENU m, const char s[], unsigned long s_len, char c[],
    col = colc;
    i = 0UL;
    for (;;) {
-      if ((s[i]!='|' && s[i]) && i<=s_len-1) {
+      if ((i<=s_len-1 && s[i]!='|') && s[i]) {
          h[x] = s[i];
          if (s[i]=='\353') maptool_Colset(&col, 'R');
          else if (s[i]=='\354') maptool_Colset(&col, 'Y');
-         if (x<1000UL && ((unsigned char)s[i]<(unsigned char)
-                '\346' || (unsigned char)s[i]>(unsigned char)'\357')) ++x;
+         if (x<1000UL && ((uint8_t)s[i]<(uint8_t)'\346' || (uint8_t)
+                s[i]>(uint8_t)'\357')) ++x;
       }
       else {
          h[x] = 0;
          if (x>0UL) {
             if (si==0UL) x = 0UL;
-            else x = (unsigned long)m->subk[m->oldknob][si-1UL];
-            maptool_drawstri(m->image, h, 1001ul, (long)(x+1UL),
-                (long)(m->oldknob*m->yknob+knobtexty(m->yknob)), dimm, 1UL,
-                col, !X2C_IN(m->oldknob,31,m->noprop), 0);
+            else x = (uint32_t)m->subk[m->oldknob][si-1UL];
+            maptool_drawstri(m->image, h, 1001ul, (int32_t)(x+1UL),
+                (int32_t)(m->oldknob*m->yknob+knobtexty(m->yknob)), dimm,
+                1UL, col, !X2C_INL(m->oldknob,61,m->noprop), 0);
          }
          ++si;
          x = 0UL;
-         if ((si>20UL || s[i]==0) || i>s_len-1) break;
+         if ((si>20UL || i>s_len-1) || s[i]==0) break;
          /*      INC(y); */
          col = colc;
       }
@@ -2388,15 +2674,17 @@ static void addline(pMENU m, const char s[], unsigned long s_len, char c[],
    ++m->oldknob;
    if ((c_len-1>0UL && c[0UL]) && c[1UL]) {
       m->submen[m->oldknob] = 1;
-      subicon(m->image, (long)(m->xsize-9UL), midy(m), 0L, 5L);
+      subicon(m->image, (int32_t)((m->xsize-aprsdecode_lums.fontxsize)-3UL),
+                 midy(m), 0L, (int32_t)(aprsdecode_lums.fontxsize-1UL));
    }
-   m->helpindex[m->oldknob] = (unsigned short)hint;
+   m->helpindex[m->oldknob] = (uint16_t)hint;
    X2C_PFREE(c);
 } /* end addline() */
 
 
-static void addonoff(pMENU m, const char s[], unsigned long s_len, char c[],
-                unsigned long c_len, unsigned long hint, long x0, char on)
+static void addonoff(pMENU m, const char s[], uint32_t s_len,
+                char c[], uint32_t c_len, uint32_t hint,
+                int32_t x0, char on)
 {
    X2C_PCOPY((void **)&c,c_len);
    addline(m, s, s_len, c, c_len, hint);
@@ -2405,17 +2693,17 @@ static void addonoff(pMENU m, const char s[], unsigned long s_len, char c[],
 } /* end addonoff() */
 
 
-static void potival(pMENU m, unsigned long knob, unsigned long val,
-                unsigned long textsx, unsigned long textwx, char s[],
-                unsigned long s_len, char w[], unsigned long w_len)
+static void potival(pMENU m, uint32_t knob, uint32_t val,
+                uint32_t textsx, uint32_t textwx, char s[],
+                uint32_t s_len, char w[], uint32_t w_len)
 {
-   unsigned long y;
-   unsigned long x;
+   uint32_t y;
+   uint32_t x;
    struct aprsdecode_COLTYP col;
    struct maptool_PIX * anonym;
    maptool_pIMAGE anonym0;
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    X2C_PCOPY((void **)&s,s_len);
    X2C_PCOPY((void **)&w,w_len);
    if (knob>0UL) {
@@ -2455,10 +2743,12 @@ static void potival(pMENU m, unsigned long knob, unsigned long val,
    col.r = 256UL;
    col.g = 201UL;
    col.b = 256UL;
-   maptool_drawstri(m->image, s, s_len, (long)textsx,
-                (long)((knob-1UL)*m->yknob+2UL), 1000UL, 1UL, col, 0, 0);
-   maptool_drawstri(m->image, w, w_len, (long)textwx,
-                (long)((knob-1UL)*m->yknob+2UL), 1000UL, 1UL, col, 0, 0);
+   maptool_drawstri(m->image, s, s_len, (int32_t)textsx,
+                (int32_t)((knob-1UL)*m->yknob+2UL), 1000UL, 1UL, col, 0,
+                0);
+   maptool_drawstri(m->image, w, w_len, (int32_t)textwx,
+                (int32_t)((knob-1UL)*m->yknob+2UL), 1000UL, 1UL, col, 0,
+                0);
    X2C_PFREE(s);
    X2C_PFREE(w);
 } /* end potival() */
@@ -2466,22 +2756,22 @@ static void potival(pMENU m, unsigned long knob, unsigned long val,
 #define useri_YCHAR 12
 
 
-static void images(aprsdecode_pOPHIST op, char cmd, unsigned short wxset)
+static void images(aprsdecode_pOPHIST op, char cmd, uint16_t wxset)
 {
    pMENU menu;
-   unsigned long ym;
-   unsigned long xm;
-   unsigned short wset;
-   unsigned short ws;
-   unsigned char wi;
+   uint32_t ym;
+   uint32_t xm;
+   uint16_t wset;
+   uint16_t ws;
+   uint8_t wi;
    char test;
    struct aprstat_LASTVAL lastval;
    maptool_pIMAGE img1;
    float km;
-   unsigned long rc;
-   unsigned long ac;
-   unsigned long mc;
-   unsigned long bc;
+   uint32_t rc;
+   uint32_t ac;
+   uint32_t mc;
+   uint32_t bc;
    switch ((unsigned)cmd) {
    case 's':
       wset = 0x80U;
@@ -2518,7 +2808,7 @@ static void images(aprsdecode_pOPHIST op, char cmd, unsigned short wxset)
       break;
    } /* end switch */
    for (wi = aprsdecode_wTEMP;; wi++) {
-      if (X2C_IN((long)wi,11,wset)) {
+      if (X2C_IN((int32_t)wi,11,wset)) {
          test = 0;
          ws = 1U<<wi;
          img1 = 0;
@@ -2536,11 +2826,11 @@ static void images(aprsdecode_pOPHIST op, char cmd, unsigned short wxset)
             /*        IF imagesx0<xm THEN menu^.x0:=imagesx1 */
             /*        ELSIF imagesx0>=xm THEN menu^.x0:=imagesx0-xm ELSE menu^.x0:=0 END;
                  */
-            menu->x0 = (unsigned long)popxbase(2147483647UL);
+            menu->x0 = (uint32_t)popxbase(2147483647UL);
             /*        menu^.y0:=mainys()-VAL(CARDINAL,click.y); */
             menu->xsize = xm+1UL;
             menu->ysize = ym+1UL;
-            menu->wid = 20UL+(unsigned long)wi;
+            menu->wid = 20UL+(uint32_t)wi;
             /*        IF lums.headmenuy THEN joinmenux(menu) END; */
             menu->y00 = 0UL;
             appendmenu(menu);
@@ -2551,22 +2841,22 @@ static void images(aprsdecode_pOPHIST op, char cmd, unsigned short wxset)
 } /* end images() */
 
 
-static unsigned long menuimgy(unsigned long liney, unsigned long entries)
+static uint32_t menuimgy(uint32_t liney, uint32_t entries)
 /* return menu image y size */
 {
    return liney*entries+4UL;
 } /* end menuimgy() */
 
 
-static void wrcolor(maptool_pIMAGE img, const char s[], unsigned long s_len,
-                unsigned long leftmargin, unsigned long bri, char prop,
-                unsigned long * y)
+static void wrcolor(maptool_pIMAGE img, const char s[], uint32_t s_len,
+                 uint32_t leftmargin, uint32_t bri, char prop,
+                uint32_t * y)
 {
    struct aprsdecode_COLTYP colw;
    struct aprsdecode_COLTYP col;
-   long inc;
-   unsigned long i;
-   unsigned long x;
+   int32_t inc;
+   uint32_t i;
+   uint32_t x;
    x = leftmargin;
    /*  Colset(col, "W"); */
    useri_ColConfset(&colw, useri_fCOLMENUTEXT);
@@ -2587,15 +2877,16 @@ static void wrcolor(maptool_pIMAGE img, const char s[], unsigned long s_len,
          col = colw; /*Colset(col, "W");*/
       }
       else if (s[i]=='\375') {
-         maptool_drawsym(img, s[i+1UL], s[i+2UL], 0, (float)(x+8UL),
-                (float)((*y+8UL)-1UL), 1000UL);
-         x += 16UL;
+         maptool_drawsym(img, s[i+1UL], s[i+2UL], 0,
+                (float)(x+aprsdecode_lums.symsize/2UL),
+                (float)((*y+aprsdecode_lums.symsize/2UL)-1UL), 1000UL);
+         x += aprsdecode_lums.symsize;
       }
       else {
-         maptool_drawchar(img, s[i], (float)x, (float)*y, &inc, bri, 1UL,
-                col, 0);
-         if (prop) x += (unsigned long)inc;
-         else x += 6UL;
+         maptool_drawchar(img, s[i], (float)x, (float)*y, &inc, bri,
+                1UL, col, 0);
+         if (prop) x += (uint32_t)inc;
+         else x += aprsdecode_lums.fontxsize;
       }
       ++i;
    }
@@ -2607,29 +2898,31 @@ static void wrcolor(maptool_pIMAGE img, const char s[], unsigned long s_len,
 
 #define useri_TEXTLINESPACE 7
 
+static sMENULINES _cnst = {0xFFFFFFFFUL,0x1FFFFFFFUL};
 
-static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
-                 unsigned long ypo, unsigned long ident, unsigned long time0,
-                 char color, char s[], unsigned long s_len, char mstr[],
-                unsigned long mstr_len, char cstr[], unsigned long cstr_len)
+static void textwin(uint32_t xw, uint32_t lines, uint32_t xpo,
+                uint32_t ypo, uint32_t ident, uint32_t time0,
+                char color, char s[], uint32_t s_len,
+                char mstr[], uint32_t mstr_len, char cstr[],
+                uint32_t cstr_len)
 {
    pMENU menu;
-   unsigned long i;
-   unsigned long ye;
-   unsigned long xe;
-   unsigned long ym;
-   unsigned long xm;
-   unsigned long y;
-   unsigned long x;
-   long bb;
-   long gg;
-   long rr;
+   uint32_t i;
+   uint32_t ye;
+   uint32_t xe;
+   uint32_t ym;
+   uint32_t xm;
+   uint32_t y;
+   uint32_t x;
+   int32_t bb;
+   int32_t gg;
+   int32_t rr;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0;
    maptool_pIMAGE anonym1;
    maptool_pIMAGE anonym2;
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    X2C_PCOPY((void **)&s,s_len);
    X2C_PCOPY((void **)&mstr,mstr_len);
    X2C_PCOPY((void **)&cstr,cstr_len);
@@ -2669,6 +2962,11 @@ static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
       gg = 190L;
       bb = 100L;
       break;
+   case 'w':
+      rr = 110L;
+      gg = 100L;
+      bb = 100L;
+      break;
    default:;
       rr = 250L;
       gg = 250L;
@@ -2677,14 +2975,14 @@ static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
    } /* end switch */
    /*  IF ident>0 THEN killmenuid(ident) END; */
    allocmenu(&menu, xw, menuimgy(aprsdecode_lums.fontysize,
-                lines)+(aprsdecode_lums.fontysize+7UL)*(unsigned long)
+                lines)+(aprsdecode_lums.fontysize+7UL)*(uint32_t)
                 (mstr[0UL]!=0), 0);
    xm = menu->image->Len1-1;
    ym = menu->image->Len0-1;
-   if ((unsigned long)aprsdecode_click.x<xm+10UL) {
-      menu->x0 = (unsigned long)aprsdecode_click.x+20UL;
+   if ((uint32_t)aprsdecode_click.x<xm+10UL) {
+      menu->x0 = (uint32_t)aprsdecode_click.x+20UL;
    }
-   else menu->x0 = (unsigned long)aprsdecode_click.x-(xm+10UL);
+   else menu->x0 = (uint32_t)aprsdecode_click.x-(xm+10UL);
    /*  menu^.y0:=mainys()-VAL(CARDINAL,click.y); */
    menu->xsize = xm+1UL;
    menu->ysize = ym+1UL;
@@ -2692,7 +2990,7 @@ static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
    menu->background = useri_bCOLOR;
    menu->x0 = xpo;
    menu->y00 = ypo;
-   menu->nohilite = 0x7FFFFFFFUL;
+   memcpy(menu->nohilite,_cnst,8u);
    tmp = menu->ysize-1UL;
    y = 0UL;
    if (y<=tmp) for (;; y++) {
@@ -2704,19 +3002,19 @@ static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
                struct maptool_PIX * anonym = (anonym1 = menu->image,
                 &anonym1->Adr[(x)*anonym1->Len0+y]);
                if (x==0UL) {
-                  anonym->r = (unsigned short)(rr*2L);
-                  anonym->g = (unsigned short)(gg*2L);
-                  anonym->b = (unsigned short)(bb*2L);
+                  anonym->r = (uint16_t)(rr*2L);
+                  anonym->g = (uint16_t)(gg*2L);
+                  anonym->b = (uint16_t)(bb*2L);
                }
                else if (x<menu->xsize-1UL) {
-                  anonym->r = (unsigned short)rr;
-                  anonym->g = (unsigned short)gg;
-                  anonym->b = (unsigned short)bb;
+                  anonym->r = (uint16_t)rr;
+                  anonym->g = (uint16_t)gg;
+                  anonym->b = (uint16_t)bb;
                }
                else {
-                  anonym->r = (unsigned short)(rr/2L);
-                  anonym->g = (unsigned short)(gg/2L);
-                  anonym->b = (unsigned short)(bb/2L);
+                  anonym->r = (uint16_t)(rr/2L);
+                  anonym->g = (uint16_t)(gg/2L);
+                  anonym->b = (uint16_t)(bb/2L);
                }
             }
          }
@@ -2736,9 +3034,9 @@ static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
             { /* with */
                struct maptool_PIX * anonym0 = (anonym2 = menu->image,
                 &anonym2->Adr[(x)*anonym2->Len0+y]);
-               anonym0->r = (unsigned short)rr;
-               anonym0->g = (unsigned short)gg;
-               if (xe*xe+ye*ye<64UL) anonym0->b = (unsigned short)bb;
+               anonym0->r = (uint16_t)rr;
+               anonym0->g = (uint16_t)gg;
+               if (xe*xe+ye*ye<64UL) anonym0->b = (uint16_t)bb;
                else anonym0->b = 65535U;
             }
          }
@@ -2752,10 +3050,10 @@ static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
       menu->yknob = aprsdecode_lums.fontysize+7UL;
       menu->oldknob = 0UL;
       addline(menu, mstr, mstr_len, cstr, cstr_len, 0UL);
-      for (i = 1UL; i<=30UL; i++) {
+      for (i = 1UL; i<=60UL; i++) {
          menu->cmds[i] = cstr[0UL];
       } /* end for */
-      menu->nohilite &= ~0x1UL;
+      X2C_EXCL(menu->nohilite,0U,61);
    }
    appendmenu(menu);
    if (ypo) menu->y00 = ypo;
@@ -2768,22 +3066,22 @@ static void textwin(unsigned long xw, unsigned long lines, unsigned long xpo,
 } /* end textwin() */
 
 
-extern void useri_textautomenu(long x0, long y00, unsigned long id,
-                unsigned long time0, char color, char s[],
-                unsigned long s_len, char mtext[], unsigned long mtext_len,
-                char cmd[], unsigned long cmd_len)
+extern void useri_textautomenu(int32_t x0, int32_t y00, uint32_t id,
+                uint32_t time0, char color, char s[],
+                uint32_t s_len, char mtext[], uint32_t mtext_len,
+                char cmd[], uint32_t cmd_len)
 {
-   unsigned long xmax;
-   unsigned long x;
-   unsigned long n;
-   long l;
-   long i;
-   long tmp;
+   uint32_t xmax;
+   uint32_t x;
+   uint32_t n;
+   int32_t l;
+   int32_t i;
+   int32_t tmp;
    if (s[0UL] || mtext[0UL]) {
-      n = (unsigned long)(s[0UL]!=0);
+      n = (uint32_t)(s[0UL]!=0);
       xmax = 0UL;
       x = 0UL;
-      l = (long)aprsstr_Length(s, s_len)-1L;
+      l = (int32_t)aprsstr_Length(s, s_len)-1L;
       tmp = l;
       i = 0L;
       if (i<=tmp) for (;; i++) {
@@ -2791,44 +3089,47 @@ extern void useri_textautomenu(long x0, long y00, unsigned long id,
             ++n;
             x = 0UL;
          }
-         else if (s[i]=='\375') x += 16UL;
-         else if ((unsigned char)s[i]<=(unsigned char)'\201') {
-            x += maptool_charwidth0(s[i]);
+         else if (s[i]=='\375') x += aprsdecode_lums.symsize;
+         else if ((uint8_t)s[i]<=(uint8_t)'\201') {
+            x += maptool_charwidth(s[i]);
             if (x>xmax) xmax = x;
          }
          if (i==tmp) break;
       } /* end for */
       i = 0L;
       x = 0UL;
-      while (i<=(long)(mtext_len-1) && mtext[i]) {
-         x += maptool_charwidth0(mtext[i]);
+      while (i<=(int32_t)(mtext_len-1) && mtext[i]) {
+         x += maptool_charwidth(mtext[i]);
          ++i;
       }
       if (x>xmax) xmax = x;
       if (x0==-3L) {
-         x0 = popxbase((unsigned long)(y00+(long)
+         x0 = popxbase((uint32_t)(y00+(int32_t)
                 menuimgy(aprsdecode_lums.fontysize, n+1UL)));
       }
-      else if (x0<0L) x0 = (maptool_xsize-(long)xmax)/2L;
-      if (y00<0L) y00 = maptool_ysize/2L-28L;
+      else if (x0<0L) x0 = (maptool_xsize-(int32_t)xmax)/2L;
+      if (y00<0L) {
+         y00 = (maptool_ysize/2L-(int32_t)
+                menuimgy(aprsdecode_lums.fontysize, n+2UL))-10L;
+      }
       if (x0<0L) x0 = 0L;
       if (y00<0L) y00 = 0L;
-      textwin(xmax+8UL, n, (unsigned long)x0, (unsigned long)y00, id, time0,
-                color, s, s_len, mtext, mtext_len, cmd, cmd_len);
+      textwin(xmax+8UL, n, (uint32_t)x0, (uint32_t)y00, id, time0, color,
+                 s, s_len, mtext, mtext_len, cmd, cmd_len);
       useri_refresh = 1;
    }
 } /* end textautomenu() */
 
 
-extern void useri_textautosize(long x0, long y00, unsigned long id,
-                unsigned long time0, char color, char s[],
-                unsigned long s_len)
+extern void useri_textautosize(int32_t x0, int32_t y00, uint32_t id,
+                uint32_t time0, char color, char s[],
+                uint32_t s_len)
 {
    useri_textautomenu(x0, y00, id, time0, color, s, s_len, "", 1ul, "", 1ul);
 } /* end textautosize() */
 
 
-extern void useri_popwatchcall(char s[], unsigned long s_len)
+extern void useri_popwatchcall(char s[], uint32_t s_len)
 {
    char h[41];
    strncpy(h,"\352\355Watch:",41u);
@@ -2857,7 +3158,8 @@ extern void useri_poligonmenu(void)
 #define useri_HELPWID 4
 
 
-static char rh(char fb[4096], long fd, long * fl, long * fp)
+static char rh(char fb[4096], int32_t fd, int32_t * fl,
+                int32_t * fp)
 {
    if (*fp>=*fl) {
       *fl = osi_RdBin(fd, (char *)fb, 4096u/1u, 4096UL);
@@ -2869,11 +3171,12 @@ static char rh(char fb[4096], long fd, long * fl, long * fp)
 } /* end rh() */
 
 
-static long hopen(char fb[4096], long * fd, long * fl, long * fp,
-                const char h[], unsigned long h_len, unsigned long offset)
+static int32_t hopen(char fb[4096], int32_t * fd, int32_t * fl,
+                int32_t * fp, const char h[], uint32_t h_len,
+                uint32_t offset)
 {
-   unsigned long i;
-   long lc;
+   uint32_t i;
+   int32_t lc;
    char c;
    *fp = 0L;
    *fl = 0L;
@@ -2885,7 +3188,7 @@ static long hopen(char fb[4096], long * fd, long * fl, long * fp,
       if (h[i]==0) break;
       c = rh(fb, *fd, fl, fp);
       if (c==0) return 0L;
-      if (c=='\012' || (unsigned char)c>' ') {
+      if (c=='\012' || (uint8_t)c>' ') {
          if (h[i]==c && i<h_len-1) ++i;
          else i = 0UL;
          if (c=='\012') ++lc;
@@ -2900,19 +3203,19 @@ static long hopen(char fb[4096], long * fd, long * fl, long * fp,
 } /* end hopen() */
 
 
-extern void useri_helptext(unsigned long line, unsigned long sub,
-                unsigned long xclick, unsigned long yclick, char idx[],
-                unsigned long idx_len)
+extern void useri_helptext(uint32_t line, uint32_t sub,
+                uint32_t xclick, uint32_t yclick, char idx[],
+                uint32_t idx_len)
 /* line0 new, line1 back, else hyperlink click */
 {
-   long fd;
-   long li;
-   long fp;
-   long fl;
-   unsigned long px;
-   unsigned long tp;
+   int32_t fd;
+   int32_t li;
+   int32_t fp;
+   int32_t fl;
+   uint32_t px;
+   uint32_t tp;
    char c;
-   unsigned char inh;
+   uint8_t inh;
    char fb[4096];
    char s[2001];
    if (line==0UL) {
@@ -2969,7 +3272,7 @@ extern void useri_helptext(unsigned long line, unsigned long sub,
          px = 4UL;
          for (;;) {
             c = rh(fb, fd, &fl, &fp);
-            if (tp==0UL && c!='|') px += maptool_charwidth0(c);
+            if (tp==0UL && c!='|') px += maptool_charwidth(c);
             if (c=='|') {
                if (tp==0UL) {
                   helpscroll[helpdepth][0U] = '|';
@@ -2985,18 +3288,18 @@ extern void useri_helptext(unsigned long line, unsigned long sub,
                }
                do {
                   c = rh(fb, fd, &fl, &fp);
-                  if ((unsigned char)c<' ') {
+                  if ((uint8_t)c<' ') {
                      tp = 0UL;
                      goto loop_exit;
                   }
-                  if (c!=':') px += maptool_charwidth0(c);
+                  if (c!=':') px += maptool_charwidth(c);
                } while (c!=':');
                /* link text end */
                if (px>=xclick) break;
                tp = 0UL;
             }
             else {
-               if ((unsigned char)c<' ') {
+               if ((uint8_t)c<' ') {
                   tp = 0UL; /* no link in this line */
                   break;
                }
@@ -3026,7 +3329,7 @@ extern void useri_helptext(unsigned long line, unsigned long sub,
       if (c==0) break;
       if (c=='|') inh = 1U;
       else {
-         if ((unsigned char)c<' ' && inh) break;
+         if ((uint8_t)c<' ' && inh) break;
          if (c==':') {
             if (inh==1U) {
                c = '\373';
@@ -3038,33 +3341,33 @@ extern void useri_helptext(unsigned long line, unsigned long sub,
             }
          }
       }
-      if (inh!=1U && (c=='\012' || (unsigned char)c>=' ')) {
+      if (inh!=1U && (c=='\012' || (uint8_t)c>=' ')) {
          /* & ((tp<>0) OR (c<>LF))*/
          s[tp] = c;
          ++tp;
          if (tp>=2000UL) break;
       }
    }
-   while (tp>0UL && (unsigned char)s[tp-1UL]<=' ') --tp;
+   while (tp>0UL && (uint8_t)s[tp-1UL]<=' ') --tp;
    s[tp] = 0;
    if (s[0U]==0) strncpy(s,"no text",2001u);
    if (helpdepth==0UL) strncpy(fb," Close ",4096u);
    else if (helpdepth<2UL) strncpy(fb," < Back ",4096u);
    else strncpy(fb," < Back | Index ",4096u);
-   useri_textautomenu(-1L, (long)aprsdecode_lums.fontysize, 4UL, 0UL, 'b', s,
-                 2001ul, fb, 4096ul, "\306", 2ul);
+   useri_textautomenu(-1L, (int32_t)aprsdecode_lums.fontysize, 4UL, 0UL,
+                'b', s, 2001ul, fb, 4096ul, "\306", 2ul);
    osic_Close(fd);
 } /* end helptext() */
 
 
-extern void useri_say(char s[], unsigned long s_len, unsigned long time0,
+extern void useri_say(char s[], uint32_t s_len, uint32_t time0,
                 char color)
 {
    useri_textautosize(0L, 0L, 4UL, time0, color, s, s_len);
 } /* end say() */
 
 
-extern void useri_sayonoff(char s[], unsigned long s_len, char on)
+extern void useri_sayonoff(char s[], uint32_t s_len, char on)
 {
    char h[100];
    X2C_PCOPY((void **)&s,s_len);
@@ -3084,19 +3387,19 @@ extern void useri_downloadprogress(void)
    { /* with */
       struct maptool__D0 * anonym = &maptool_mappack;
       strncpy(s,"Done ",1000u);
-      aprsstr_IntToStr((long)anonym->donecnt, 1UL, s1, 1000ul);
+      aprsstr_IntToStr((int32_t)anonym->donecnt, 1UL, s1, 1000ul);
       aprsstr_Append(s, 1000ul, s1, 1000ul);
       aprsstr_Append(s, 1000ul, " of ", 5ul);
-      aprsstr_IntToStr((long)anonym->mapscnt, 1UL, s1, 1000ul);
+      aprsstr_IntToStr((int32_t)anonym->mapscnt, 1UL, s1, 1000ul);
       aprsstr_Append(s, 1000ul, s1, 1000ul);
       aprsstr_Append(s, 1000ul, " missed: ", 10ul);
-      aprsstr_IntToStr((long)anonym->givups, 1UL, s1, 1000ul);
+      aprsstr_IntToStr((int32_t)anonym->givups, 1UL, s1, 1000ul);
       aprsstr_Append(s, 1000ul, s1, 1000ul);
       aprsstr_Append(s, 1000ul, " retries: ", 11ul);
       if (anonym->run) {
-         aprsstr_IntToStr((long)anonym->retrys, 1UL, s1, 1000ul);
+         aprsstr_IntToStr((int32_t)anonym->retrys, 1UL, s1, 1000ul);
       }
-      else aprsstr_IntToStr((long)anonym->retrysum, 1UL, s1, 1000ul);
+      else aprsstr_IntToStr((int32_t)anonym->retrysum, 1UL, s1, 1000ul);
       aprsstr_Append(s, 1000ul, s1, 1000ul);
       if (!anonym->run) aprsstr_Append(s, 1000ul, " Ready", 7ul);
       useri_textautosize(-3L, 0L, 6UL, 0UL, 'b', s, 1000ul);
@@ -3111,9 +3414,9 @@ static void msgpop(void)
    pMENU m;
    aprsdecode_pMSGFIFO pn;
    aprsdecode_pMSGFIFO pm;
-   long mc;
-   long i;
-   long y00;
+   int32_t mc;
+   int32_t i;
+   int32_t y00;
    char new0;
    char col;
    struct aprsdecode_MSGFIFO * anonym;
@@ -3177,9 +3480,15 @@ d Item",201u);
                strncpy(s1,"    Close  |     Next   |   Reply  |    Delete",
                 201u);
             }
+            i = 0L;
+            while (i<66L && anonym->txt[i]) {
+               if ((uint8_t)anonym->txt[i]<' ' || (uint8_t)
+                anonym->txt[i]>='\177') anonym->txt[i] = ' ';
+               ++i;
+            }
             aprsstr_Append(s, 201ul, anonym->txt, 67ul);
             aprsstr_Append(s, 201ul, "]", 2ul);
-            if (sndmsg) y00 = 20L;
+            if (sndmsg) y00 = 40L;
             else y00 = -1L;
             if (new0) col = 'r';
             else col = 'b';
@@ -3196,7 +3505,7 @@ d Item",201u);
 } /* end msgpop() */
 
 
-extern void useri_clrmsgtext(char to[], unsigned long to_len)
+extern void useri_clrmsgtext(char to[], uint32_t to_len)
 {
    char s[100];
    useri_confstr(useri_fMSGTO, s, 100ul);
@@ -3211,7 +3520,7 @@ extern void useri_clrmsgtext(char to[], unsigned long to_len)
 static void reply(void)
 {
    aprsdecode_pMSGFIFO pm;
-   long i;
+   int32_t i;
    char oldport;
    if (aprsdecode_msgfifo0) {
       pm = aprsdecode_msgfifo0;
@@ -3251,7 +3560,7 @@ static void delmsgfifo(void)
 {
    aprsdecode_pMSGFIFO po;
    aprsdecode_pMSGFIFO pm;
-   long i;
+   int32_t i;
    if (aprsdecode_msgfifo0) {
       pm = aprsdecode_msgfifo0;
       if (pm->next==0 || labs(useri_nextmsg)<=1L) {
@@ -3267,18 +3576,23 @@ static void delmsgfifo(void)
          }
          if (po) po->next = pm->next;
       }
-      osic_free((X2C_ADDRESS *) &pm, sizeof(struct aprsdecode_MSGFIFO));
+      osic_free((char * *) &pm, sizeof(struct aprsdecode_MSGFIFO));
    }
    useri_killmenuid(211UL);
    useri_refresh = 1;
 } /* end delmsgfifo() */
 
 
-static void zoomtoitem(void)
+static void zoomtoitem(int32_t msgnum)
 {
-   if (aprsdecode_msgfifo0 && aprspos_posvalid(aprsdecode_msgfifo0->itempos))
-                 {
-      aprstext_setmark1(aprsdecode_msgfifo0->itempos, 1, X2C_max_longint,
+   aprsdecode_pMSGFIFO pn;
+   pn = aprsdecode_msgfifo0;
+   while (pn && msgnum>1L) {
+      --msgnum;
+      pn = pn->next;
+   }
+   if (pn && aprspos_posvalid(pn->itempos)) {
+      aprstext_setmark1(pn->itempos, 1, X2C_max_longint,
                 aprsdecode_realtime);
    }
    /*  click.cmd:=CMDZOOMTOMARKS; */
@@ -3287,9 +3601,9 @@ static void zoomtoitem(void)
 } /* end zoomtoitem() */
 
 
-static void getwxset(unsigned char set, char * ch, unsigned short * wset)
+static void getwxset(uint8_t set, char * ch, uint16_t * wset)
 {
-   unsigned long i;
+   uint32_t i;
    char s[100];
    useri_confstr(set, s, 100ul);
    *wset = 0U;
@@ -3309,7 +3623,7 @@ static void getwxset(unsigned char set, char * ch, unsigned short * wset)
 } /* end getwxset() */
 
 
-static void textinfo(unsigned long typ)
+static void textinfo(uint32_t typ)
 {
    char s[1001];
    char col;
@@ -3336,7 +3650,7 @@ static void textinfo(unsigned long typ)
 extern void useri_refrinfo(void)
 {
    char s[100];
-   unsigned char t;
+   uint8_t t;
    if (aprsdecode_click.entries>0UL) {
       t = aprsdecode_click.table[aprsdecode_click.selected].typf;
       s[0] = 0;
@@ -3356,7 +3670,7 @@ extern void useri_refrinfo(void)
 extern void useri_hoverinfo(struct aprsdecode_CLICKOBJECT obj)
 {
    char hh;
-   unsigned short graphset;
+   uint16_t graphset;
    char s[1001];
    char col;
    char void0;
@@ -3379,13 +3693,13 @@ extern void useri_hoverinfo(struct aprsdecode_CLICKOBJECT obj)
 
 static void oneclickinfo(void)
 {
-   unsigned long i;
-   unsigned short wset;
+   uint32_t i;
+   uint16_t wset;
    maptool_pIMAGE img;
    struct aprstat_LASTVAL lastval;
    char hh;
    char s[100];
-   unsigned char ct;
+   uint8_t ct;
    if (aprsdecode_click.entries==0UL) return;
    i = aprsdecode_click.selected;
    hh = 0;
@@ -3479,17 +3793,17 @@ static void updatemenus(void)
 } /* end updatemenus() */
 
 
-static void Viewline(char s[], unsigned long s_len)
+static void Viewline(char s[], uint32_t s_len)
 {
-   struct aprspos_POSITION pos;
+   struct aprsstr_POSITION pos;
    float zoom;
-   unsigned long i;
+   uint32_t i;
    char h[101];
    s[0UL] = 0;
    i = 0UL;
    do {
       zoom = 0.0f;
-      aprsdecode_posinval(&pos);
+      aprsstr_posinval(&pos);
       useri_getview(useri_fVIEW, i, &zoom, &pos);
       if (zoom==0.0f) {
          strncpy(h,"P ",101u);
@@ -3511,53 +3825,53 @@ static void Viewline(char s[], unsigned long s_len)
 } /* end Viewline() */
 
 
-static void setunderbar(pMENU m, long x)
+static void setunderbar(pMENU m, int32_t x)
 {
    if (aprsdecode_lums.headmenuy) {
       if (x<0L) x = 0L;
-      m->x0 = (unsigned long)x;
+      m->x0 = (uint32_t)x;
       m->y00 = aprsdecode_lums.fontysize;
    }
 } /* end setunderbar() */
 
 
-static void setmenu(pMENU menu, unsigned long liney, unsigned long entries,
-                unsigned char background)
+static void setmenu(pMENU menu, uint32_t liney, uint32_t entries,
+                uint8_t background)
 {
-   unsigned long xm;
-   long yh;
+   uint32_t xm;
+   int32_t yh;
    xm = menu->image->Len1-1;
-   if ((unsigned long)aprsdecode_click.x<xm+10UL) {
-      menu->x0 = (unsigned long)aprsdecode_click.x+20UL;
+   if ((uint32_t)aprsdecode_click.x<xm+10UL) {
+      menu->x0 = (uint32_t)aprsdecode_click.x+20UL;
    }
-   else menu->x0 = (unsigned long)aprsdecode_click.x-(xm+10UL);
-   menu->y00 = useri_mainys()-(unsigned long)aprsdecode_click.y;
+   else menu->x0 = (uint32_t)aprsdecode_click.x-(xm+10UL);
+   menu->y00 = useri_mainys()-(uint32_t)aprsdecode_click.y;
    menu->yknob = liney;
    menu->xsize = xm+1UL;
    menu->background = background;
-   yh = (long)liney;
-   if (entries<=1UL) yh = (long)(liney/2UL);
-   if (useri_xmouse.y>yh) menu->y00 = (unsigned long)(useri_xmouse.y-yh);
+   yh = (int32_t)liney;
+   if (entries<=1UL) yh = (int32_t)(liney/2UL);
+   if (useri_xmouse.y>yh) menu->y00 = (uint32_t)(useri_xmouse.y-yh);
    else menu->y00 = 0UL;
    appendmenu(menu);
    clampedline = 0UL;
 } /* end setmenu() */
 
 
-static void newmenu(pMENU * menu, unsigned long linex, unsigned long liney,
-                unsigned long entries, unsigned char background)
+static void newmenu(pMENU * menu, uint32_t linex, uint32_t liney,
+                uint32_t entries, uint8_t background)
 {
    allocmenu(menu, linex, menuimgy(liney, entries), 0);
    setmenu(*menu, liney, entries, background);
 } /* end newmenu() */
 
 
-static void refrmenu(pMENU * menu, unsigned long linex, unsigned long liney,
-                unsigned long entries, unsigned char background,
+static void refrmenu(pMENU * menu, uint32_t linex, uint32_t liney,
+                uint32_t entries, uint8_t background,
                 char saveimg)
 /* refresh/resize menu */
 {
-   unsigned long ys;
+   uint32_t ys;
    if (*menu) {
       if (saveimg) {
          if ((*menu)->image==0) {
@@ -3578,7 +3892,7 @@ static void refrmenu(pMENU * menu, unsigned long linex, unsigned long liney,
       if ((((*menu)->image==0 || linex!=(*menu)->xsize) || liney!=(*menu)
                 ->yknob) || ys!=((*menu)->image->Len0-1)+1UL) {
          disposeimg(&(*menu)->image);
-         useri_allocimage(&(*menu)->image, (long)linex, (long)ys,
+         useri_allocimage(&(*menu)->image, (int32_t)linex, (int32_t)ys,
                 (*menu)->saveimage);
          if ((*menu)->image==0) {
             osi_WrStrLn("menuimage out of memory", 24ul);
@@ -3601,26 +3915,37 @@ static void domainpop(pMENU);
 
 static void domainpop(pMENU m)
 {
-   unsigned long oldk;
-   unsigned long olds;
-   long entc;
+   uint32_t i;
+   uint32_t oldk;
+   uint32_t olds;
+   int32_t entc;
    char s[101];
    struct aprsdecode_OPHIST * anonym;
-   char tmp;
+   /*        s:=SP6+SP7+"|"+SP1+SPS+"|"; Append(s, call); */
+   uint32_t tmp;
+   char tmp0;
    oldk = m->oldknob;
    olds = m->oldsub;
    m->oldknob = 0UL;
-   for (entc = (long)aprsdecode_click.entries-1L; entc>=0L; entc--) {
+   for (entc = (int32_t)aprsdecode_click.entries-1L; entc>=0L; entc--) {
       if (aprsdecode_click.table[entc].opf && m->oldknob+1UL<10UL) {
          { /* with */
             struct aprsdecode_OPHIST * anonym = aprsdecode_click.table[entc]
                 .opf;
-            strncpy(s,"\365\366|\365\365\367",101u);
+            strncpy(s,"\346\365\366|",101u);
+            tmp = aprsdecode_lums.symsize/aprsdecode_lums.fontxsize;
+            i = 0UL;
+            if (i<=tmp) for (;; i++) {
+               aprsstr_Append(s, 101ul, " ", 2ul);
+               if (i==tmp) break;
+            } /* end for */
             aprsstr_Append(s, 101ul, anonym->call, 9ul);
-            addonoff(m, s, 101ul, "?", 2ul, 101UL, 6L,
-                entc==(long)aprsdecode_click.selected);
+            addonoff(m, s, 101ul, "?", 2ul, 101UL,
+                (int32_t)aprsdecode_lums.fontxsize,
+                entc==(int32_t)aprsdecode_click.selected);
             maptool_drawsym(m->image, anonym->sym.tab, anonym->sym.pic, 0,
-                24.0f, (float)((m->oldknob-1UL)*m->yknob+m->yknob/2UL),
+                (float)(aprsdecode_lums.symsize/2UL+aprsdecode_lums.fontxsize*2UL+3UL)
+                , (float)((m->oldknob-1UL)*m->yknob+m->yknob/2UL),
                 1000UL);
          }
       }
@@ -3661,16 +3986,19 @@ static void domainpop(pMENU m)
                 && aprspos_posvalid(aprsdecode_click.measurepos)) {
       addline(m, " Zoom to Markers", 17ul, "/", 2ul, 120UL);
    }
-   addline(m, "  -  |     \363|   +", 18ul, (char *)(tmp = '\030',&tmp),
-                1u/1u, 130UL);
-   subicon(m->image, 47L, midy(m)+2L, 3L, 7L);
-   addline(m, "    |\363Center\364|", 15ul, (char *)(tmp = '\023',&tmp),
-                1u/1u, 133UL);
-   subicon(m->image, 13L, midy(m), 1L, 7L);
-   subicon(m->image, (long)(m->xsize-13UL), midy(m), 2L, 7L);
-   addline(m, " <<  |     \363|   X", 18ul, (char *)(tmp = '\005',&tmp),
-                1u/1u, 136UL);
-   subicon(m->image, 47L, midy(m)-2L, 4L, 7L);
+   addline(m, "  -  |     \363|   +", 18ul, (char *)(tmp0 = '\030',
+                &tmp0), 1u/1u, 130UL);
+   subicon(m->image, (int32_t)(aprsdecode_lums.fontxsize*8UL), midy(m)+2L,
+                3L, (int32_t)aprsdecode_lums.fontxsize);
+   addline(m, "    |\363Center\363|", 15ul, (char *)(tmp0 = '\023',
+                &tmp0), 1u/1u, 133UL);
+   subicon(m->image, 13L, midy(m), 1L, (int32_t)aprsdecode_lums.fontxsize);
+   subicon(m->image, (int32_t)(m->xsize-13UL), midy(m), 2L,
+                (int32_t)aprsdecode_lums.fontxsize);
+   addline(m, " <<  |     \363|   X", 18ul, (char *)(tmp0 = '\005',
+                &tmp0), 1u/1u, 136UL);
+   subicon(m->image, (int32_t)(aprsdecode_lums.fontxsize*8UL), midy(m)-2L,
+                4L, (int32_t)aprsdecode_lums.fontxsize);
    m->ysize = m->oldknob*m->yknob;
    m->redrawproc = domainpop;
    m->hiknob = 0UL;
@@ -3686,22 +4014,23 @@ static void domainpop(pMENU m)
 extern void useri_mainpop(void)
 {
    pMENU menu;
-   long yh;
+   int32_t yh;
    useri_killallmenus();
-   newmenu(&menu, 94UL, aprsdecode_lums.fontysize+7UL, 30UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*14UL+16UL,
+                aprsdecode_lums.fontysize+7UL, 60UL, useri_bTRANSP);
    if (!aprsdecode_lums.headmenuy) {
       /* set popup mainmenue to not hide symbol and its texts */
-      yh = (long)useri_mainys()-aprsdecode_click.y;
-      if ((unsigned long)aprsdecode_click.x<menu->xsize+16UL) {
-         menu->x0 = (unsigned long)aprsdecode_click.x+16UL;
+      yh = (int32_t)useri_mainys()-aprsdecode_click.y;
+      if ((uint32_t)aprsdecode_click.x<menu->xsize+16UL) {
+         menu->x0 = (uint32_t)aprsdecode_click.x+16UL;
          yh += 10L; /* under the sybol */
       }
       else {
-         menu->x0 = (unsigned long)aprsdecode_click.x-(menu->xsize+16UL);
+         menu->x0 = (uint32_t)aprsdecode_click.x-(menu->xsize+16UL);
          yh -= 10L;
       }
       if (yh<0L) yh = 0L;
-      menu->y00 = (unsigned long)yh;
+      menu->y00 = (uint32_t)yh;
    }
    else setunderbar(menu, 0L);
    domainpop(menu);
@@ -3712,7 +4041,8 @@ extern void useri_mainpop(void)
 static void toolbar(void)
 {
    pMENU menu;
-   newmenu(&menu, 187UL, aprsdecode_lums.fontysize, 1UL, useri_bTRANSP);
+   newmenu(&menu, 31UL*aprsdecode_lums.fontxsize+1UL,
+                aprsdecode_lums.fontysize+1UL, 1UL, useri_bTRANSP);
    addline(menu, " File |Config\362| Zoom | Tools | Help ", 37ul, "\206",
                 2ul, 200UL);
    menu->ysize = menu->oldknob*menu->yknob;
@@ -3730,7 +4060,8 @@ static void dofilemenu(pMENU menu)
    menu->oldknob = 0UL;
    addline(menu, " Quit", 6ul, "Q", 2ul, 300UL);
    addline(menu, " Keep Log Days", 15ul, "\323", 2ul, 309UL);
-   addonoff(menu, "   |Write Log", 14ul, "\323", 2ul, 307UL, 8L,
+   addonoff(menu, "   |Write Log", 14ul, "\323", 2ul, 307UL,
+                (int32_t)(aprsdecode_lums.fontxsize+4UL),
                 useri_configon(useri_fLOGWFN));
    addline(menu, " Make Video", 12ul, "\312", 2ul, 301UL);
    addline(menu, " Screenshot", 12ul, "\233>", 3ul, 302UL);
@@ -3743,7 +4074,8 @@ static void dofilemenu(pMENU menu)
 static void filemenu(void)
 {
    pMENU menu;
-   newmenu(&menu, 82UL, aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*13UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
    dofilemenu(menu);
    setunderbar(menu, 0L);
    menu->ysize = menu->oldknob*menu->yknob;
@@ -3760,7 +4092,7 @@ static void listmenu(pMENU m)
    char h[100];
    char s[100];
    char mo[100];
-   unsigned long i;
+   uint32_t i;
    m->oldknob = 0UL;
    strncpy(mo," - | - | - | - | - | Monitor",100u);
    useri_confstr(useri_fWRINCOM, s, 100ul);
@@ -3791,7 +4123,8 @@ static void listmenu(pMENU m)
 static void listmen(void)
 {
    pMENU menu;
-   newmenu(&menu, 140UL, aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*23UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
    listmenu(menu);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
@@ -3801,13 +4134,13 @@ static void listmen(void)
 } /* end listmen() */
 
 
-static void monconfig(unsigned long sub)
+static void monconfig(uint32_t sub)
 {
    char h[100];
    char s[100];
    char mo[100];
-   unsigned long st;
-   unsigned long i;
+   uint32_t st;
+   uint32_t i;
    char tmp;
    mo[0U] = 0;
    useri_confstr(useri_fWRINCOM, s, 100ul);
@@ -3825,8 +4158,8 @@ static void monconfig(unsigned long sub)
       if (st>0UL) {
          if (i==0UL) aprsstr_Append(mo, 100ul, "n", 2ul);
          else {
-            aprsstr_Append(mo, 100ul, (char *)(tmp = (char)(i+48UL),&tmp),
-                1u/1u);
+            aprsstr_Append(mo, 100ul, (char *)(tmp = (char)(i+48UL),
+                &tmp), 1u/1u);
          }
          if (st==2UL) aprsstr_Append(mo, 100ul, "+", 2ul);
       }
@@ -3842,22 +4175,14 @@ static void dotoolsmenu(pMENU menu)
 {
    menu->oldknob = 0UL;
    addline(menu, " Animate", 9ul, "A", 2ul, 505UL);
-   /*  IF click.mhop[0]<>0C THEN addline(menu, " Show All", "0",
-                MINH*5+10) END; */
    if (aprsdecode_lums.headmenuy && aprspos_posvalid(aprsdecode_click.markpos)
                 ) addline(menu, " Clear Markers", 15ul, ":", 2ul, 515UL);
-   /*  addonoff(menu, "   |Radiolink", CMDGEOPROFIL, MINH*5+17, 8,
-                configon(fGEOPROFIL)); */
-   /*
-     addline(menu, " WXonly|  All ", CMDRAIN, MINH*5+20);
-     addline(menu, " Temp  |  Rain", "W", MINH*5+25);
-     addline(menu, " Dimm Notmover", "m", MINH*5+30);
-   */
    addline(menu, " Send Message", 14ul, "\256", 2ul, 535UL);
    addline(menu, " Map directory", 15ul, "\303", 2ul, 536UL);
    addline(menu, " Add Maptypes", 14ul, "\301", 2ul, 538UL);
    addline(menu, " Select Data", 13ul, "\324>", 3ul, 522UL);
-   addonoff(menu, "   |Radiolink", 14ul, "\313>", 3ul, 517UL, 8L,
+   addonoff(menu, "   |Radiolink", 14ul, "\313>", 3ul, 517UL,
+                (int32_t)(aprsdecode_lums.fontxsize+4UL),
                 useri_configon(useri_fGEOPROFIL));
    addline(menu, " Find", 6ul, "F>", 3ul, 500UL);
    addline(menu, " Choose Maps", 13ul, "c>", 3ul, 540UL);
@@ -3885,28 +4210,29 @@ static void dotoolsmenu(pMENU menu)
 static void toolsmenu(void)
 {
    pMENU menu;
-   newmenu(&menu, 88UL, aprsdecode_lums.fontysize+5UL, 16UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*14UL+4UL,
+                aprsdecode_lums.fontysize+5UL, 16UL, useri_bTRANSP);
    dotoolsmenu(menu);
    /*  menu^.ysize:=menu^.oldknob*menu^.yknob; */
    menu->oldknob = 0UL;
 } /* end toolsmenu() */
 
 
-static void drawsquare(maptool_pIMAGE image, struct maptool_PIX col, long x0,
-                 long y00, long x1, long y1)
+static void drawsquare(maptool_pIMAGE image, struct maptool_PIX col,
+                int32_t x0, int32_t y00, int32_t x1, int32_t y1)
 {
-   long y;
-   long x;
-   long tmp;
-   long tmp0;
+   int32_t y;
+   int32_t x;
+   int32_t tmp;
+   int32_t tmp0;
    if (x0<0L) x0 = 0L;
    if (x1<0L) x1 = 0L;
    if (y00<0L) y00 = 0L;
    if (y1<0L) y1 = 0L;
-   if (x0>(long)(image->Len1-1)) x0 = (long)(image->Len1-1);
-   if (x1>(long)(image->Len1-1)) x1 = (long)(image->Len1-1);
-   if (y00>(long)(image->Len0-1)) y00 = (long)(image->Len0-1);
-   if (y1>(long)(image->Len0-1)) y1 = (long)(image->Len0-1);
+   if (x0>(int32_t)(image->Len1-1)) x0 = (int32_t)(image->Len1-1);
+   if (x1>(int32_t)(image->Len1-1)) x1 = (int32_t)(image->Len1-1);
+   if (y00>(int32_t)(image->Len0-1)) y00 = (int32_t)(image->Len0-1);
+   if (y1>(int32_t)(image->Len0-1)) y1 = (int32_t)(image->Len0-1);
    tmp = y1;
    y = y00;
    if (y<=tmp) for (;; y++) {
@@ -3921,23 +4247,23 @@ static void drawsquare(maptool_pIMAGE image, struct maptool_PIX col, long x0,
 } /* end drawsquare() */
 
 
-static void drawsymsquare(maptool_pIMAGE image, char tab, char sym, long x0,
-                long y00)
+static void drawsymsquare(maptool_pIMAGE image, char tab, char sym,
+                int32_t x0, int32_t y00)
 {
    struct maptool_PIX col;
-   if (!X2C_INL((unsigned char)tab,256,_cnst)) {
+   if (!X2C_INL((uint8_t)tab,256,_cnst1)) {
       tab = '\\';
       sym = '?';
-      useri_textautosize(0L, 0L, 6UL, 2UL, 'e', "illegal symbol", 15ul);
+      useri_textautosize(0L, 0L, 6UL, 2UL, 'e', "\012illegal symbol\012",
+                17ul);
    }
    col.r = 300U;
    col.g = 301U;
    col.b = 300U;
-   /*  FOR y:=-(SYMSIZE DIV 2) TO SYMSIZE DIV 2 DO */
-   /*    FOR x:=-(SYMSIZE DIV 2) TO SYMSIZE DIV 2 DO image^[x0+x][y0+y]:=col END;
-                 */
-   /*  END; */
-   drawsquare(image, col, x0-8L, y00-8L, x0+8L, y00+8L);
+   drawsquare(image, col, x0-(int32_t)(aprsdecode_lums.symsize/2UL),
+                y00-(int32_t)(aprsdecode_lums.symsize/2UL),
+                x0+(int32_t)(aprsdecode_lums.symsize/2UL),
+                y00+(int32_t)(aprsdecode_lums.symsize/2UL));
    maptool_drawsym(image, tab, sym, 0, (float)x0, (float)y00, 1000UL);
 } /* end drawsymsquare() */
 
@@ -3949,18 +4275,22 @@ static void specialmapmenu(pMENU m)
    char h[100];
    char s[100];
    m->oldknob = 0UL;
-   addline(m, " Show All ", 11ul, "\300", 2ul, 8600UL);
+   addline(m, " Show All", 10ul, "\300", 2ul, 8600UL);
+   addline(m, " Show POI", 10ul, "C>", 3ul, 8603UL);
    addline(m, " WX Stations", 13ul, "\300", 2ul, 8605UL);
    addline(m, " Temp Colourmap", 16ul, "W", 2ul, 8610UL);
    addline(m, " Rain Colourmap", 16ul, "W", 2ul, 8615UL);
    addline(m, " Dimm Notmover", 15ul, "m", 2ul, 8620UL);
    useri_confstr(useri_fONESYMB, s, 100ul);
+   s[2U] = 0;
    strncpy(h," Symbol |",100u);
    aprsstr_Append(h, 100ul, s, 100ul);
    addline(m, h, 100ul, "\325>", 3ul, 8625UL);
-   if (X2C_INL((unsigned char)s[0U],256,_cnst)) {
-      drawsymsquare(m->image, s[0U], s[1U], (long)(m->xsize-20UL),
-                (long)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
+   if (X2C_INL((uint8_t)s[0U],256,_cnst1)) {
+      drawsymsquare(m->image, s[0U], s[1U],
+                (int32_t)(((m->xsize-aprsdecode_lums.symsize/2UL)
+                -aprsdecode_lums.fontxsize)-8UL),
+                (int32_t)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
    }
    m->redrawproc = specialmapmenu;
    m->hiknob = 0UL;
@@ -3970,7 +4300,8 @@ static void specialmapmenu(pMENU m)
 static void specialmap(void)
 {
    pMENU menu;
-   newmenu(&menu, 100UL, aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
    specialmapmenu(menu);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
@@ -3982,10 +4313,12 @@ static void specialmap(void)
 static void helpmenu(void)
 {
    pMENU menu;
-   newmenu(&menu, 150UL, aprsdecode_lums.fontysize+7UL, 3UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*25UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 4UL, useri_bTRANSP);
    /*  addline(menu, "Shortcuts", CMDSHORTCUTLIST, MINH*6); */
+   addline(menu, "Check Version", 14ul, "\305", 2ul, 607UL);
    addline(menu, "Helptext", 9ul, "\305", 2ul, 610UL);
-   addline(menu, "aprsmap(cu) 0.61 by OE5DXL ", 28ul, " ", 2ul, 605UL);
+   addline(menu, "aprsmap(cu) 0.77 by OE5DXL ", 28ul, " ", 2ul, 605UL);
    setunderbar(menu, 37L);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
@@ -3995,30 +4328,31 @@ static void helpmenu(void)
 
 #define useri_MAXBUTT 20
 
+#define useri_MTAB "789"
+
 
 static void mapchoose(void)
 {
    pMENU menu;
-   unsigned long m;
-   unsigned long n;
-   unsigned long i;
+   uint32_t m;
+   uint32_t n;
+   uint32_t i;
    char s[101];
-   char tmp;
-   newmenu(&menu, 100UL, aprsdecode_lums.fontysize+7UL, 20UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 20UL, useri_bTRANSP);
    m = 0UL;
    for (n = 17UL;; n--) {
       useri_confstrings(useri_fMAPNAMES, n, 0, s, 101ul);
       if (s[0U]) {
          i = 0UL;
-         while (i<100UL && (unsigned char)s[i]>' ') ++i;
+         while (i<100UL && (uint8_t)s[i]>' ') ++i;
          s[i] = 0;
          if (m<3UL) {
             aprsstr_Append(s, 101ul, " [", 3ul);
-            aprsstr_Append(s, 101ul, (char *)(tmp = (char)(m+55UL),&tmp),
-                1u/1u);
+            aprsstr_Append(s, 101ul, (char *) &"789"[m], 1u/1u);
             aprsstr_Append(s, 101ul, "]", 2ul);
-            ++m;
          }
+         ++m;
          addline(menu, s, 101ul, "\302", 2ul, 710UL);
       }
       if (n==0UL) break;
@@ -4034,7 +4368,8 @@ static void mapchoose(void)
 static void nextclick(void)
 {
    pMENU menu;
-   newmenu(&menu, 80UL, aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*13UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
    addline(menu, "Symbol Hover", 13ul, "\276>", 3ul, 905UL);
    addline(menu, "To Map", 7ul, "\276>", 3ul, 900UL);
    addline(menu, "To Text", 8ul, "\276>", 3ul, 901UL);
@@ -4051,16 +4386,17 @@ static void mapclick(void)
 {
    pMENU menu;
    char s[100];
-   newmenu(&menu, 100UL, aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
    useri_confstr(useri_fCLICKMAP, s, 100ul);
-   addonoff(menu, "\365\365|Center", 10ul, "\201", 2ul, 1000UL, 6L,
-                s[0U]=='C');
-   addonoff(menu, "\365\365|Set Marker 1", 16ul, "\201", 2ul, 1005UL, 6L,
-                s[0U]=='X');
-   addonoff(menu, "\365\365|Set Marker 2", 16ul, "\201", 2ul, 1010UL, 6L,
-                s[0U]=='Y');
-   addonoff(menu, "\365\365|Marker 1 then 2", 19ul, "\201", 2ul, 1015UL, 6L,
-                s[0U]=='2');
+   addonoff(menu, "\365\365|Center", 10ul, "\201", 2ul, 1000UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL), s[0U]=='c');
+   addonoff(menu, "\365\365|Set Marker 1", 16ul, "\201", 2ul, 1005UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL), s[0U]=='X');
+   addonoff(menu, "\365\365|Set Marker 2", 16ul, "\201", 2ul, 1010UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL), s[0U]=='Y');
+   addonoff(menu, "\365\365|Marker 1 then 2", 19ul, "\201", 2ul, 1015UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL), s[0U]=='2');
    if (!aprsdecode_lums.headmenuy) {
       addline(menu, "\365\365|Menu", 8ul, "\201", 2ul, 1020UL);
    }
@@ -4069,39 +4405,45 @@ static void mapclick(void)
    menu->oldknob = 0UL;
 } /* end mapclick() */
 
-#define useri_OX 6
-/*      OY=8; */
-
 
 static void wxonoff(pMENU menu)
 {
    char ch;
-   unsigned short wset;
+   uint16_t wset;
    getwxset(useri_fCLICKWXSYM, &ch, &wset);
    menu->oldknob = 0UL;
-   addonoff(menu, "\365\365|Center", 10ul, "\232", 2ul, 1100UL, 6L, ch=='C');
-   addonoff(menu, "\365\365|Zoom To", 11ul, "\232", 2ul, 1101UL, 6L,
-                ch=='.');
-   addonoff(menu, "\365\365|Show Rf", 11ul, "\232", 2ul, 1102UL, 6L,
-                ch=='=');
-   addonoff(menu, "\365\365|Heard", 9ul, "\232", 2ul, 1103UL, 6L, ch=='H');
-   addonoff(menu, "\365\365|Beacon Hist", 15ul, "\232", 2ul, 1104UL, 6L,
-                ch=='b');
-   addonoff(menu, "\365\365|Raw+Decoded", 15ul, "\232", 2ul, 1105UL, 6L,
-                ch=='u');
-   addonoff(menu, "\365\365|Luminosity", 14ul, "\232", 2ul, 1106UL, 6L,
+   addonoff(menu, "\365\365|Center", 10ul, "\232", 2ul, 1100UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), ch=='C');
+   addonoff(menu, "\365\365|Zoom To", 11ul, "\232", 2ul, 1101UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), ch=='.');
+   addonoff(menu, "\365\365|Show Rf", 11ul, "\232", 2ul, 1102UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), ch=='=');
+   addonoff(menu, "\365\365|Heard", 9ul, "\232", 2ul, 1103UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), ch=='H');
+   addonoff(menu, "\365\365|Beacon Hist", 15ul, "\232", 2ul, 1104UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), ch=='b');
+   addonoff(menu, "\365\365|Raw+Decoded", 15ul, "\232", 2ul, 1105UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), ch=='u');
+   addonoff(menu, "\365\365|Luminosity", 14ul, "\232", 2ul, 1106UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x40U & wset)!=0);
-   addonoff(menu, "\365\365|Rain", 8ul, "\232", 2ul, 1107UL, 6L,
+   addonoff(menu, "\365\365|Rain", 8ul, "\232", 2ul, 1107UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x20U & wset)!=0);
-   addonoff(menu, "\365\365|Wind Dir", 12ul, "\232", 2ul, 1108UL, 6L,
+   addonoff(menu, "\365\365|Wind Dir", 12ul, "\232", 2ul, 1108UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x10U & wset)!=0);
-   addonoff(menu, "\365\365|Wind", 8ul, "\232", 2ul, 1109UL, 6L,
+   addonoff(menu, "\365\365|Wind", 8ul, "\232", 2ul, 1109UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x8U & wset)!=0);
-   addonoff(menu, "\365\365|Hygro", 9ul, "\232", 2ul, 1110UL, 6L,
+   addonoff(menu, "\365\365|Humidity", 12ul, "\232", 2ul, 1110UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x4U & wset)!=0);
-   addonoff(menu, "\365\365|Barometer", 13ul, "\232", 2ul, 1111UL, 6L,
+   addonoff(menu, "\365\365|Barometer", 13ul, "\232", 2ul, 1111UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x2U & wset)!=0);
-   addonoff(menu, "\365\365|Temp", 8ul, "\232", 2ul, 1112UL, 6L,
+   addonoff(menu, "\365\365|Temp", 8ul, "\232", 2ul, 1112UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x1U & wset)!=0);
    addline(menu, "\365\365|Menu", 8ul, "\232", 2ul, 1113UL);
    menu->ysize = menu->oldknob*menu->yknob;
@@ -4113,35 +4455,40 @@ static void wxonoff(pMENU menu)
 static void wxclick(void)
 {
    pMENU menu;
-   newmenu(&menu, 100UL, aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
    wxonoff(menu);
 } /* end wxclick() */
-
-#define useri_OX0 6
-/*      OY=8; */
 
 
 static void hoveronoff(pMENU menu)
 {
    char ch;
-   unsigned short wset;
+   uint16_t wset;
    getwxset(useri_fHOVERSET, &ch, &wset);
    menu->oldknob = 0UL;
-   addonoff(menu, "\365\365|Raw+Decoded", 15ul, "\327", 2ul, 1151UL, 6L,
-                ch=='u');
-   addonoff(menu, "\365\365|Luminosity", 14ul, "\327", 2ul, 1152UL, 6L,
+   addonoff(menu, "\365\365|Raw+Decoded", 15ul, "\327", 2ul, 1151UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), ch=='u');
+   addonoff(menu, "\365\365|Luminosity", 14ul, "\327", 2ul, 1152UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x40U & wset)!=0);
-   addonoff(menu, "\365\365|Rain", 8ul, "\327", 2ul, 1153UL, 6L,
+   addonoff(menu, "\365\365|Rain", 8ul, "\327", 2ul, 1153UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x20U & wset)!=0);
-   addonoff(menu, "\365\365|Wind Dir", 12ul, "\327", 2ul, 1154UL, 6L,
+   addonoff(menu, "\365\365|Wind Dir", 12ul, "\327", 2ul, 1154UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x10U & wset)!=0);
-   addonoff(menu, "\365\365|Wind", 8ul, "\327", 2ul, 1155UL, 6L,
+   addonoff(menu, "\365\365|Wind", 8ul, "\327", 2ul, 1155UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x8U & wset)!=0);
-   addonoff(menu, "\365\365|Hygro", 9ul, "\327", 2ul, 1156UL, 6L,
+   addonoff(menu, "\365\365|Humidity", 12ul, "\327", 2ul, 1156UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x4U & wset)!=0);
-   addonoff(menu, "\365\365|Barometer", 13ul, "\327", 2ul, 1157UL, 6L,
+   addonoff(menu, "\365\365|Barometer", 13ul, "\327", 2ul, 1157UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x2U & wset)!=0);
-   addonoff(menu, "\365\365|Temp", 8ul, "\327", 2ul, 1158UL, 6L,
+   addonoff(menu, "\365\365|Temp", 8ul, "\327", 2ul, 1158UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL),
                 (0x1U & wset)!=0);
    addline(menu, "\365\365|Hover OFf", 13ul, "\327", 2ul, 1159UL);
    menu->ysize = menu->oldknob*menu->yknob;
@@ -4153,32 +4500,41 @@ static void hoveronoff(pMENU menu)
 static void hoverclick(void)
 {
    pMENU menu;
-   newmenu(&menu, 100UL, aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
    hoveronoff(menu);
 } /* end hoverclick() */
 
 
-static void trackonoff(pMENU menu, char on, unsigned char v)
+static void trackonoff(pMENU menu, char on, uint8_t v)
 {
    char w[100];
    useri_confstr(v, w, 100ul);
    menu->oldknob = 0UL;
-   addonoff(menu, "\365\365|Del Waypoint", 16ul, (char *) &on, 1u/1u, 1208UL,
-                 6L, aprsstr_InStr(w, 100ul, "q", 2ul)>=0L);
-   addonoff(menu, "\365\365|Altitude", 12ul, (char *) &on, 1u/1u, 1207UL, 6L,
-                 aprsstr_InStr(w, 100ul, "n", 2ul)>=0L);
-   addonoff(menu, "\365\365|Speed Hist", 14ul, (char *) &on, 1u/1u, 1200UL,
-                6L, aprsstr_InStr(w, 100ul, "s", 2ul)>=0L);
-   addonoff(menu, "\365\365|Animate", 11ul, (char *) &on, 1u/1u, 1201UL, 6L,
-                aprsstr_InStr(w, 100ul, "A", 2ul)>=0L);
-   addonoff(menu, "\365\365|Zoom To", 11ul, (char *) &on, 1u/1u, 1202UL, 6L,
-                aprsstr_InStr(w, 100ul, ".", 2ul)>=0L);
-   addonoff(menu, "\365\365|Show Rf", 11ul, (char *) &on, 1u/1u, 1203UL, 6L,
-                aprsstr_InStr(w, 100ul, "=", 2ul)>=0L);
-   addonoff(menu, "\365\365|Beacon Hist", 15ul, (char *) &on, 1u/1u, 1204UL,
-                6L, aprsstr_InStr(w, 100ul, "b", 2ul)>=0L);
-   addonoff(menu, "\365\365|Raw+Decoded", 15ul, (char *) &on, 1u/1u, 1205UL,
-                6L, aprsstr_InStr(w, 100ul, "u", 2ul)>=0L);
+   addonoff(menu, "\365\365|Del Waypoint", 16ul, (char *) &on, 1u/1u,
+                1208UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 100ul, "q", 2ul)>=0L);
+   addonoff(menu, "\365\365|Altitude", 12ul, (char *) &on, 1u/1u, 1207UL,
+                 (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                 100ul, "n", 2ul)>=0L);
+   addonoff(menu, "\365\365|Speed Hist", 14ul, (char *) &on, 1u/1u,
+                1200UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 100ul, "s", 2ul)>=0L);
+   addonoff(menu, "\365\365|Animate", 11ul, (char *) &on, 1u/1u, 1201UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                100ul, "A", 2ul)>=0L);
+   addonoff(menu, "\365\365|Zoom To", 11ul, (char *) &on, 1u/1u, 1202UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                100ul, ".", 2ul)>=0L);
+   addonoff(menu, "\365\365|Show Rf", 11ul, (char *) &on, 1u/1u, 1203UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                100ul, "=", 2ul)>=0L);
+   addonoff(menu, "\365\365|Beacon Hist", 15ul, (char *) &on, 1u/1u,
+                1204UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 100ul, "b", 2ul)>=0L);
+   addonoff(menu, "\365\365|Raw+Decoded", 15ul, (char *) &on, 1u/1u,
+                1205UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 100ul, "u", 2ul)>=0L);
    addline(menu, "\365\365|Menu", 8ul, (char *) &on, 1u/1u, 1206UL);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
@@ -4189,41 +4545,50 @@ static void trackonoff(pMENU menu, char on, unsigned char v)
 static void trackclick(void)
 {
    pMENU menu;
-   newmenu(&menu, 100UL, aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
    trackonoff(menu, '\204', useri_fCLICKTRACK);
 } /* end trackclick() */
 
-#define useri_OX1 6
-/*      OY=8; */
 
-
-static void symbolonoff(pMENU menu, char on, unsigned char v)
+static void symbolonoff(pMENU menu, char on, uint8_t v)
 {
    char w[31];
    useri_confstr(v, w, 31ul);
    menu->oldknob = 0UL;
-   addonoff(menu, "\365\365|Set Marker 2", 16ul, (char *) &on, 1u/1u, 1300UL,
-                 6L, aprsstr_InStr(w, 31ul, "Y", 2ul)>=0L);
-   addonoff(menu, "\365\365|Set Marker 1", 16ul, (char *) &on, 1u/1u, 1301UL,
-                 6L, aprsstr_InStr(w, 31ul, "X", 2ul)>=0L);
-   addonoff(menu, "\365\365|Center", 10ul, (char *) &on, 1u/1u, 1302UL, 6L,
-                aprsstr_InStr(w, 31ul, "C", 2ul)>=0L);
-   addonoff(menu, "\365\365|Raw+Decoded", 15ul, (char *) &on, 1u/1u, 1303UL,
-                6L, aprsstr_InStr(w, 31ul, "u", 2ul)>=0L);
-   addonoff(menu, "\365\365|Animate", 11ul, (char *) &on, 1u/1u, 1304UL, 6L,
-                aprsstr_InStr(w, 31ul, "A", 2ul)>=0L);
-   addonoff(menu, "\365\365|Zoom To", 11ul, (char *) &on, 1u/1u, 1305UL, 6L,
-                aprsstr_InStr(w, 31ul, ".", 2ul)>=0L);
-   addonoff(menu, "\365\365|Show Rf", 11ul, (char *) &on, 1u/1u, 1306UL, 6L,
-                aprsstr_InStr(w, 31ul, "=", 2ul)>=0L);
-   addonoff(menu, "\365\365|Heard", 9ul, (char *) &on, 1u/1u, 1307UL, 6L,
-                aprsstr_InStr(w, 31ul, "H", 2ul)>=0L);
-   addonoff(menu, "\365\365|Beacon Hist", 15ul, (char *) &on, 1u/1u, 1308UL,
-                6L, aprsstr_InStr(w, 31ul, "b", 2ul)>=0L);
-   addonoff(menu, "\365\365|Speed Hist", 14ul, (char *) &on, 1u/1u, 1309UL,
-                6L, aprsstr_InStr(w, 31ul, "s", 2ul)>=0L);
-   addonoff(menu, "\365\365|Altitude", 12ul, (char *) &on, 1u/1u, 1310UL, 6L,
-                 aprsstr_InStr(w, 31ul, "n", 2ul)>=0L);
+   addonoff(menu, "\365\365|Set Marker 2", 16ul, (char *) &on, 1u/1u,
+                1300UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 31ul, "Y", 2ul)>=0L);
+   addonoff(menu, "\365\365|Set Marker 1", 16ul, (char *) &on, 1u/1u,
+                1301UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 31ul, "X", 2ul)>=0L);
+   addonoff(menu, "\365\365|Center", 10ul, (char *) &on, 1u/1u, 1302UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                31ul, "C", 2ul)>=0L);
+   addonoff(menu, "\365\365|Raw+Decoded", 15ul, (char *) &on, 1u/1u,
+                1303UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 31ul, "u", 2ul)>=0L);
+   addonoff(menu, "\365\365|Animate", 11ul, (char *) &on, 1u/1u, 1304UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                31ul, "A", 2ul)>=0L);
+   addonoff(menu, "\365\365|Zoom To", 11ul, (char *) &on, 1u/1u, 1305UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                31ul, ".", 2ul)>=0L);
+   addonoff(menu, "\365\365|Show Rf", 11ul, (char *) &on, 1u/1u, 1306UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                31ul, "=", 2ul)>=0L);
+   addonoff(menu, "\365\365|Heard", 9ul, (char *) &on, 1u/1u, 1307UL,
+                (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                31ul, "H", 2ul)>=0L);
+   addonoff(menu, "\365\365|Beacon Hist", 15ul, (char *) &on, 1u/1u,
+                1308UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 31ul, "b", 2ul)>=0L);
+   addonoff(menu, "\365\365|Speed Hist", 14ul, (char *) &on, 1u/1u,
+                1309UL, (int32_t)(aprsdecode_lums.fontxsize+1UL),
+                aprsstr_InStr(w, 31ul, "s", 2ul)>=0L);
+   addonoff(menu, "\365\365|Altitude", 12ul, (char *) &on, 1u/1u, 1310UL,
+                 (int32_t)(aprsdecode_lums.fontxsize+1UL), aprsstr_InStr(w,
+                 31ul, "n", 2ul)>=0L);
    addline(menu, "\365\365|Menue", 9ul, (char *) &on, 1u/1u, 1311UL);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
@@ -4231,19 +4596,20 @@ static void symbolonoff(pMENU menu, char on, unsigned char v)
 } /* end symbolonoff() */
 
 
-static void symbolclick(char on, unsigned char v)
+static void symbolclick(char on, uint8_t v)
 {
    pMENU menu;
-   newmenu(&menu, 100UL, aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
    symbolonoff(menu, on, v);
 } /* end symbolclick() */
 
 
-static void toggwx(unsigned char set, unsigned char w)
+static void toggwx(uint8_t set, uint8_t w)
 {
-   unsigned long n;
+   uint32_t n;
    char s[100];
-   n = (unsigned long)w+1UL;
+   n = (uint32_t)w+1UL;
    useri_confstr(set, s, 100ul);
    if (s[0U]!='0') s[0U] = 0;
    while (aprsstr_Length(s, 100ul)<n) aprsstr_Append(s, 100ul, "0", 2ul);
@@ -4254,10 +4620,10 @@ static void toggwx(unsigned char set, unsigned char w)
 } /* end toggwx() */
 
 
-static char isinwatch(const char s[], unsigned long s_len)
+static char isinwatch(const char s[], uint32_t s_len)
 {
    char h[31];
-   unsigned long i;
+   uint32_t i;
    i = 0UL;
    for (;;) {
       useri_confstrings(useri_fWATCH, i, 0, h, 31ul);
@@ -4294,17 +4660,17 @@ static void infosdo(pMENU menu)
    aprsdecode_pOPHIST op;
    char h[101];
    char s[101];
-   unsigned short what;
+   uint16_t what;
    char test;
    struct aprstat_LASTVAL lastval;
    maptool_pIMAGE img1;
    float km;
-   unsigned long olds;
-   unsigned long oldk;
-   unsigned long rejs;
-   unsigned long msgs;
-   unsigned long acks;
-   unsigned long beacons;
+   uint32_t olds;
+   uint32_t oldk;
+   uint32_t rejs;
+   uint32_t msgs;
+   uint32_t acks;
+   uint32_t beacons;
    char tmp;
    op = aprsdecode_selop();
    oldk = menu->oldknob;
@@ -4314,8 +4680,8 @@ static void infosdo(pMENU menu)
    else strncpy(s,"\361    |  Waypoints |",101u);
    addline(menu, s, 101ul, "e", 2ul, 1400UL);
    subicon(menu->image, 13L, midy(menu), 1L, 7L);
-   subicon(menu->image, (long)((menu->image->Len1-1)-14UL), midy(menu), 2L,
-                7L);
+   subicon(menu->image, (int32_t)((menu->image->Len1-1)-14UL), midy(menu),
+                2L, 7L);
    what = 0U;
    img1 = 0;
    aprstat_wxgraph(&img1, aprsdecode_selop(), aprsdecode_systime, &what,
@@ -4338,7 +4704,7 @@ static void infosdo(pMENU menu)
    else aprsstr_Append(s, 101ul, "Moved", 6ul);
    if (km>0.05f || test) addline(menu, s, 101ul, "n", 2ul, 1415UL);
    strncpy(s," ",101u);
-   aprsstr_IntToStr((long)beacons, 1UL, h, 101ul);
+   aprsstr_IntToStr((int32_t)beacons, 1UL, h, 101ul);
    aprsstr_Append(s, 101ul, h, 101ul);
    aprsstr_Append(s, 101ul, " Beacon Times", 14ul);
    addline(menu, s, 101ul, "b", 2ul, 1420UL);
@@ -4361,19 +4727,20 @@ static void infosdo(pMENU menu)
       strncpy(s," Delete ",101u);
       if (testdelwaypoint()) aprsstr_Append(s, 101ul, "Waypoint", 9ul);
       else aprsstr_Append(s, 101ul, op->call, 9ul);
-      addline(menu, s, 101ul, (char *)(tmp = '\177',&tmp), 1u/1u, 1440UL);
+      addline(menu, s, 101ul, (char *)(tmp = '\177',&tmp), 1u/1u,
+                1440UL);
    }
    if (km>0.05f) {
       addline(menu, " Change Trackcolour", 20ul, "~", 2ul, 1445UL);
    }
    strncpy(s," Msg ",101u);
-   aprsstr_IntToStr((long)msgs, 1UL, h, 101ul);
+   aprsstr_IntToStr((int32_t)msgs, 1UL, h, 101ul);
    aprsstr_Append(s, 101ul, h, 101ul);
    aprsstr_Append(s, 101ul, "/Ack ", 6ul);
-   aprsstr_IntToStr((long)acks, 1UL, h, 101ul);
+   aprsstr_IntToStr((int32_t)acks, 1UL, h, 101ul);
    aprsstr_Append(s, 101ul, h, 101ul);
    aprsstr_Append(s, 101ul, "/Rej ", 6ul);
-   aprsstr_IntToStr((long)rejs, 1UL, h, 101ul);
+   aprsstr_IntToStr((int32_t)rejs, 1UL, h, 101ul);
    aprsstr_Append(s, 101ul, h, 101ul);
    if (msgs>0UL) addline(menu, s, 101ul, "\250", 2ul, 1450UL);
    else addline(menu, s, 101ul, "", 1ul, 1450UL);
@@ -4393,7 +4760,7 @@ static void infosdo(pMENU menu)
    }
    if ((0x4U & what)) {
       aprsstr_FixToStr(lastval.hyg, 0UL, s, 101ul);
-      strncpy(h,"Hygrometer |",101u);
+      strncpy(h,"Humidity   |",101u);
       aprsstr_Append(h, 101ul, s, 101ul);
       aprsstr_Append(h, 101ul, "%", 2ul);
       addline(menu, h, 101ul, "h", 2ul, 1460UL);
@@ -4456,7 +4823,8 @@ static void infosdo(pMENU menu)
 static void infos(void)
 {
    pMENU menu;
-   newmenu(&menu, 125UL, aprsdecode_lums.fontysize+5UL, 24UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*21UL+4UL,
+                aprsdecode_lums.fontysize+5UL, 24UL, useri_bTRANSP);
    infosdo(menu);
    /*  menu^.ysize:=menu^.oldknob*menu^.yknob; */
    menu->oldknob = 0UL;
@@ -4471,55 +4839,61 @@ static void infos(void)
 #define useri_MAXFPS 5000
 
 
-static void perc(unsigned long * vd, char h[100], char s[100],
-                unsigned long vw, unsigned long potx, unsigned char cfg,
-                unsigned long def, long * lum)
+static void perc(uint32_t * vd, uint32_t potwidth, char h[100],
+                char s[100], uint32_t vw, uint32_t potx,
+                uint8_t cfg, uint32_t def, int32_t * lum)
 {
-   unsigned long v;
-   v = (unsigned long)useri_conf2int(cfg, 0UL, 0L, 100L, (long)def);
+   uint32_t v;
+   v = (uint32_t)useri_conf2int(cfg, 0UL, 0L, 100L, (int32_t)def);
    if (potx>0UL) {
       v = (vw*100UL)/1024UL;
-      *lum = (long)vw;
+      *lum = (int32_t)vw;
    }
    aprsstr_Assign(s, 100ul, configs[cfg].title, 31ul);
-   useri_int2cfg(cfg, (long)v);
-   aprsstr_IntToStr((long)v, 0UL, h, 100ul);
+   useri_int2cfg(cfg, (int32_t)v);
+   aprsstr_IntToStr((int32_t)v, 0UL, h, 100ul);
    aprsstr_Append(h, 100ul, "%", 2ul);
-   *vd = (v*220UL)/100UL;
+   *vd = (v*potwidth)/100UL;
 } /* end perc() */
 
 
-static void potimove(pMENU m, unsigned long potx, unsigned long knob)
+static void potimove(pMENU m, uint32_t potx, uint32_t knob)
 {
    char h[100];
    char s[100];
-   unsigned long tx1;
-   unsigned long vd;
-   unsigned long vw;
-   unsigned long vp;
-   unsigned long v;
-   unsigned long maxbright;
+   uint32_t potwidth;
+   uint32_t tx1;
+   uint32_t vd;
+   uint32_t vw;
+   uint32_t vp;
+   uint32_t v;
+   uint32_t maxbright;
    float gam;
+   potwidth = 37UL*aprsdecode_lums.fontxsize;
    aprsdecode_lums.moving = 0;
    if (potx<8UL) vp = 0UL;
    else vp = potx-8UL;
-   if (vp>220UL) vp = 220UL;
-   tx1 = 180UL;
-   vw = (vp*1024UL)/220UL;
+   if (vp>potwidth) vp = potwidth;
+   tx1 = potwidth-40UL;
+   vw = (vp*1024UL)/potwidth;
    vd = 0UL;
    if (knob==1UL) {
-      perc(&vd, h, s, vw, potx, useri_fLOBJ, 70UL, &aprsdecode_lums.obj);
+      perc(&vd, potwidth, h, s, vw, potx, useri_fLOBJ, 70UL,
+                &aprsdecode_lums.obj);
    }
    else if (knob==2UL) {
-      perc(&vd, h, s, vw, potx, useri_fLMAP, 30UL, &aprsdecode_lums.map);
+      perc(&vd, potwidth, h, s, vw, potx, useri_fLMAP, 25UL,
+                &aprsdecode_lums.map);
+      useri_mapbritocfg();
    }
    else if (knob==3UL) {
-      perc(&vd, h, s, vw, potx, useri_fLTRACK, 80UL, &aprsdecode_lums.track);
+      perc(&vd, potwidth, h, s, vw, potx, useri_fLTRACK, 80UL,
+                &aprsdecode_lums.track);
    }
    else if (knob==4UL) {
       gam = aprsdecode_lums.gamma;
       if (potx>0UL) {
-         gam = X2C_DIVR((float)vp*10.0f,220.0f);
+         gam = X2C_DIVR((float)vp*10.0f,(float)potwidth);
          if (gam<0.2f) gam = 0.2f;
          aprsdecode_lums.gamma = gam;
       }
@@ -4527,60 +4901,69 @@ static void potimove(pMENU m, unsigned long potx, unsigned long knob)
       strncpy(s,"Gamma",100u);
       aprsstr_FixToStr(gam+0.05f, 2UL, h, 100ul);
       icfg(useri_fGAMMA, h, 100ul);
-      vd = aprsdecode_trunc(X2C_DIVR(gam*220.0f,10.0f));
+      vd = aprsdecode_trunc(X2C_DIVR(gam*(float)potwidth,10.0f));
    }
    else if (knob==5UL) {
-      perc(&vd, h, s, vw, potx, useri_fLSYM, 90UL, &aprsdecode_lums.sym);
+      perc(&vd, potwidth, h, s, vw, potx, useri_fLSYM, 90UL,
+                &aprsdecode_lums.sym);
    }
    else if (knob==6UL) {
-      perc(&vd, h, s, vw, potx, useri_fLTEXT, 80UL, &aprsdecode_lums.text);
+      perc(&vd, potwidth, h, s, vw, potx, useri_fLTEXT, 80UL,
+                &aprsdecode_lums.text);
    }
    else if (knob==7UL) {
-      perc(&vd, h, s, vw, potx, useri_fLWAY, 70UL,
+      perc(&vd, potwidth, h, s, vw, potx, useri_fLWAY, 70UL,
                 &aprsdecode_lums.waypoint);
    }
    else if (knob==8UL) {
       maxbright = aprsdecode_lums.purgetime;
       if (maxbright<3600UL) maxbright = 3600UL;
       v = aprsdecode_lums.firstdim;
+      if (v>aprsdecode_lums.purgetime) v = aprsdecode_lums.purgetime;
       if (potx>0UL) {
-         v = (vp*maxbright)/220UL;
+         v = (vp*maxbright)/potwidth;
          aprsdecode_lums.firstdim = v;
       }
       strncpy(s,"Time full Bright",100u);
-      useri_int2cfg(useri_fTFULL, (long)(v/60UL));
-      aprsstr_IntToStr((long)(v/3600UL), 0UL, h, 100ul);
-      aprsstr_Append(h, 100ul, "h", 2ul);
-      vd = (v*220UL)/maxbright;
+      useri_int2cfg(useri_fTFULL, (int32_t)(v/60UL));
+      if (v<7200UL) {
+         aprsstr_IntToStr((int32_t)(v/60UL), 0UL, h, 100ul);
+         aprsstr_Append(h, 100ul, "Min", 4ul);
+      }
+      else {
+         aprsstr_IntToStr((int32_t)(v/3600UL), 0UL, h, 100ul);
+         aprsstr_Append(h, 100ul, "h", 2ul);
+      }
+      vd = (v*potwidth)/maxbright;
    }
    else if (knob==9UL) {
       v = aprsdecode_lums.maxdim;
       if (potx>0UL) {
-         v = (vp*36000UL)/220UL;
+         v = (vp*36000UL)/potwidth;
          aprsdecode_lums.maxdim = v;
       }
       strncpy(s,"Time Fade Out",100u);
-      aprsstr_IntToStr((long)(v/60UL), 0UL, h, 100ul);
+      aprsstr_IntToStr((int32_t)(v/60UL), 0UL, h, 100ul);
       icfg(useri_fTFADE, h, 100ul);
       aprsstr_Append(h, 100ul, "Min", 4ul);
-      vd = (v*220UL)/36000UL;
+      vd = (v*potwidth)/36000UL;
    }
    else if (knob==10UL) {
       /*
           v:=lums.actfps;
-          IF potx>0 THEN v:=vp*MAXFPS DIV POTWIDTH; lums.actfps:=v  END;
+          IF potx>0 THEN v:=vp*MAXFPS DIV potwidth; lums.actfps:=v  END;
           IF lums.actfps=0 THEN lums.actfps:=1 END;
           s:="s/Frame";
           IntToStr(v, 0, h);
-          vd:=v*POTWIDTH DIV MAXFPS;
+          vd:=v*potwidth DIV MAXFPS;
       */
-      v = (unsigned long)aprsdecode_lums.actfps;
-      if (potx>0UL) v = (vp*vp*5000UL)/48400UL;
+      v = (uint32_t)aprsdecode_lums.actfps;
+      if (potx>0UL) v = (vp*vp*5000UL)/(potwidth*potwidth);
       if (v==0UL) v = 1UL;
-      aprsdecode_lums.actfps = (long)v;
+      aprsdecode_lums.actfps = (int32_t)v;
       strncpy(s,"s/Frame",100u);
-      aprsstr_IntToStr((long)v, 0UL, h, 100ul);
-      vd = (unsigned long)X2C_TRUNCC(osic_sqrt((float)((v*220UL*220UL)
+      aprsstr_IntToStr((int32_t)v, 0UL, h, 100ul);
+      vd = (uint32_t)X2C_TRUNCC(osic_sqrt((float)((v*potwidth*potwidth)
                 /5000UL)),0UL,X2C_max_longcard);
       tx1 = 90UL;
       knob = 1UL;
@@ -4592,7 +4975,7 @@ static void potimove(pMENU m, unsigned long potx, unsigned long knob)
 
 static void potisonoff(pMENU menu)
 {
-   unsigned long i;
+   uint32_t i;
    menu->oldknob = 0UL;
    for (i = 1UL; i<=9UL; i++) {
       addline(menu, "", 1ul, "!", 2ul, 1500UL+i);
@@ -4606,7 +4989,8 @@ static void potisonoff(pMENU menu)
 static void potis(void)
 {
    pMENU menu;
-   newmenu(&menu, 236UL, aprsdecode_lums.fontysize+9UL, 10UL, useri_bCOLOR);
+   newmenu(&menu, 37UL*aprsdecode_lums.fontxsize+16UL,
+                aprsdecode_lums.fontysize+9UL, 10UL, useri_bCOLOR);
    potisonoff(menu);
 } /* end potis() */
 
@@ -4627,26 +5011,26 @@ static void abortpop(void)
 {
    pMENU menu;
    useri_killallmenus();
-   newmenu(&menu, 240UL, aprsdecode_lums.fontysize+7UL, 4UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*40UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 4UL, useri_bTRANSP);
    abortpoponoff(menu);
 } /* end abortpop() */
 
 static char useri_noprop = 1;
 
 
-static void linewr(pMENU m, unsigned long knob, unsigned long x0,
-                unsigned long curs, unsigned long width, char curson,
-                char s[], unsigned long s_len, char s1[],
-                unsigned long s1_len)
+static void linewr(pMENU m, uint32_t knob, uint32_t x0, uint32_t curs,
+                uint32_t width, char curson, char s[],
+                uint32_t s_len, char s1[], uint32_t s1_len)
 {
-   unsigned long ic;
-   unsigned long iw;
-   unsigned long i;
-   unsigned long y1;
-   unsigned long x1;
-   unsigned long y;
-   unsigned long x;
-   long inc;
+   uint32_t ic;
+   uint32_t iw;
+   uint32_t i;
+   uint32_t y1;
+   uint32_t x1;
+   uint32_t y;
+   uint32_t x;
+   int32_t inc;
    struct aprsdecode_COLTYP col;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0;
@@ -4654,8 +5038,8 @@ static void linewr(pMENU m, unsigned long knob, unsigned long x0,
    maptool_pIMAGE anonym2;
    maptool_pIMAGE anonym3;
    maptool_pIMAGE anonym4;
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    X2C_PCOPY((void **)&s,s_len);
    X2C_PCOPY((void **)&s1,s1_len);
    if (knob==0UL) goto label;
@@ -4686,19 +5070,19 @@ static void linewr(pMENU m, unsigned long knob, unsigned long x0,
    tmp = aprsstr_Length(s, s_len);
    i = 1UL;
    if (i<=tmp) for (;; i++) {
-      maptool_drawchar(m->image, s[i-1UL], (float)x, (float)y, &inc, 1000UL,
-                1UL, col, 0);
-      inc = 6L;
-      x += (unsigned long)inc;
+      maptool_drawchar(m->image, s[i-1UL], (float)x, (float)y, &inc,
+                1000UL, 1UL, col, 0);
+      inc = (int32_t)aprsdecode_lums.fontxsize;
+      x += (uint32_t)inc;
       if (i==tmp) break;
    } /* end for */
-   x1 = x+6UL;
+   x1 = x+aprsdecode_lums.fontxsize;
    /*title */
    /*text */
    if (width>0UL) {
       i = m->xsize-4UL;
       /*  IF width>0 THEN */
-      iw = x1+width*6UL+2UL;
+      iw = x1+width*aprsdecode_lums.fontxsize+2UL;
       if (iw<i) i = iw;
       /*  END; */
       tmp = m->yknob-3UL;
@@ -4718,21 +5102,21 @@ static void linewr(pMENU m, unsigned long knob, unsigned long x0,
          } /* end for */
          if (y1==tmp) break;
       } /* end for */
-      x = (curs+2UL)*6UL+x1+4UL;
-      if (x>m->xsize) i = (x-m->xsize)/6UL;
+      x = (curs+2UL)*aprsdecode_lums.fontxsize+x1+4UL;
+      if (x>m->xsize) i = (x-m->xsize)/aprsdecode_lums.fontxsize;
       else i = 0UL;
       x = x1;
       for (;;) {
-         inc = 6L;
+         inc = (int32_t)aprsdecode_lums.fontxsize;
          if (i<aprsstr_Length(s1, s1_len)) {
-            if (x<(m->xsize-4UL)-6UL) {
-               maptool_drawchar(m->image, s1[i], (float)x, (float)y, &inc,
-                1000UL, 1UL, col, 0);
-               inc = 6L;
+            if (x<(m->xsize-4UL)-aprsdecode_lums.fontxsize) {
+               maptool_drawchar(m->image, s1[i], (float)x, (float)y,
+                &inc, 1000UL, 1UL, col, 0);
+               inc = (int32_t)aprsdecode_lums.fontxsize;
             }
          }
          if (curson && i==curs) {
-            if (i<curs) x += (curs-i)*6UL;
+            if (i<curs) x += (curs-i)*aprsdecode_lums.fontxsize;
             do {
                if (x+4UL<m->xsize) {
                   for (ic = 0UL; ic<=1UL; ic++) {
@@ -4756,9 +5140,7 @@ static void linewr(pMENU m, unsigned long knob, unsigned long x0,
                --inc;
             } while (inc>0L);
          }
-         else {
-            x += (unsigned long)inc;
-         }
+         else x += (uint32_t)inc;
          if (i>=s1_len-1) break;
          ++i;
       }
@@ -4770,46 +5152,46 @@ static void linewr(pMENU m, unsigned long knob, unsigned long x0,
 } /* end linewr() */
 
 
-static void keybknob(pMENU m, unsigned long knob, char withcurs,
-                unsigned long posx)
+static void keybknob(pMENU m, uint32_t knob, char withcurs,
+                uint32_t posx)
 {
-   unsigned char idx;
-   unsigned long l;
-   unsigned long x;
+   uint8_t idx;
+   uint32_t l;
+   uint32_t x;
    char s[1000];
    struct CONFIG * anonym;
    idx = m->confidx[knob];
-   if (idx<=useri_fEDITLINE && X2C_IN(knob,31,m->clampkb)) {
+   if (idx<=useri_fEDITLINE && X2C_INL(knob,61,m->clampkb)) {
       { /* with */
          struct CONFIG * anonym = &configs[idx];
          if (isbool(anonym->typ)) x = 17UL;
          else x = 4UL;
          if (posx>x) {
-            posx = (posx-x)/6UL;
+            posx = (posx-x)/aprsdecode_lums.fontxsize;
             l = aprsstr_Length(anonym->title, 31ul)+1UL;
             if (clampedline==knob && posx>=l) {
                /*        IF posx>=l THEN  */
-               anonym->curspos = (unsigned short)(posx-l);
+               anonym->curspos = (uint16_t)(posx-l);
                useri_refresh = 1;
             }
          }
          useri_confstr(idx, s, 1000ul);
-         linewr(m, knob, x, (unsigned long)anonym->curspos,
-                (unsigned long)anonym->width, withcurs, anonym->title, 31ul,
-                s, 1000ul);
+         linewr(m, knob, x, (uint32_t)anonym->curspos,
+                (uint32_t)anonym->width, withcurs, anonym->title, 31ul, s,
+                1000ul);
       }
       if (posx) clampedline = knob;
    }
 } /* end keybknob() */
 
 
-static void setmenupos(pMENU m, unsigned long defx, unsigned long defy)
+static void setmenupos(pMENU m, uint32_t defx, uint32_t defy)
 {
-   unsigned long yc;
-   unsigned long xc;
-   if (m && (unsigned long)m->pullconf>0UL) {
-      xc = (unsigned long)useri_conf2int(m->pullconf, 0UL, 0L, 32000L, 0L);
-      yc = (unsigned long)useri_conf2int(m->pullconf, 1UL, 0L, 32000L, 0L);
+   uint32_t yc;
+   uint32_t xc;
+   if (m && (uint32_t)m->pullconf>0UL) {
+      xc = (uint32_t)useri_conf2int(m->pullconf, 0UL, 0L, 32000L, 0L);
+      yc = (uint32_t)useri_conf2int(m->pullconf, 1UL, 0L, 32000L, 0L);
       if (xc==0UL && yc==0UL) {
          /* not pulled set default */
          m->x0 = defx;
@@ -4821,11 +5203,11 @@ static void setmenupos(pMENU m, unsigned long defx, unsigned long defy)
                    (* connect to window frame *) */
          /*      IF yc+m^.ysize>VAL(CARDINAL, ysize) THEN yc:=MAXYSIZE END;
                    (* connect to window frame *) */
-         if (xc+m->xsize>(unsigned long)maptool_xsize) {
-            xc = (unsigned long)maptool_xsize-m->xsize;
+         if (xc+m->xsize>(uint32_t)maptool_xsize) {
+            xc = (uint32_t)maptool_xsize-m->xsize;
          }
-         if (yc+m->ysize>(unsigned long)maptool_ysize) {
-            yc = (unsigned long)maptool_ysize-m->ysize;
+         if (yc+m->ysize>(uint32_t)maptool_ysize) {
+            yc = (uint32_t)maptool_ysize-m->ysize;
          }
          m->x0 = xc;
          m->y00 = yc;
@@ -4837,11 +5219,11 @@ static void setmenupos(pMENU m, unsigned long defx, unsigned long defy)
 #define useri_W 1024
 
 
-static void invline(maptool_pIMAGE im, unsigned long x0, unsigned long y00,
-                unsigned long x1, unsigned long y1, char allcolor)
+static void invline(maptool_pIMAGE im, uint32_t x0, uint32_t y00,
+                uint32_t x1, uint32_t y1, char allcolor)
 {
-   unsigned long y;
-   unsigned long x;
+   uint32_t y;
+   uint32_t x;
    struct maptool_PIX * anonym;
    /*
              IF allcolor OR ((r=g) & (g=b)) THEN
@@ -4851,8 +5233,8 @@ static void invline(maptool_pIMAGE im, unsigned long x0, unsigned long y00,
                r:=w; g:=w; b:=w;
              END;
    */
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    /*WrInt(x1, 10); WrInt(HIGH(im^), 10); WrInt(y1, 10);
                 WrInt(HIGH(im^[0]), 10); WrLn; */
    if (y1<=im->Len0-1 && x1<=(im->Len1-1)+1UL) {
@@ -4883,15 +5265,15 @@ static void invline(maptool_pIMAGE im, unsigned long x0, unsigned long y00,
 #define useri_W0 1024
 
 
-static void inv(pMENU m, unsigned long sub, unsigned long k)
+static void inv(pMENU m, uint32_t sub, uint32_t k)
 {
-   unsigned long y1;
-   unsigned long x1;
-   unsigned long y00;
-   unsigned long x0;
-   if (!X2C_IN(k-1UL,31,m->nohilite)) {
-      if (X2C_IN(k,31,m->clampkb)) {
-         x0 = (unsigned long)m->subk[k-1UL][1U];
+   uint32_t y1;
+   uint32_t x1;
+   uint32_t y00;
+   uint32_t x0;
+   if (!X2C_INL(k-1UL,61,m->nohilite)) {
+      if (X2C_INL(k,61,m->clampkb)) {
+         x0 = (uint32_t)m->subk[k-1UL][1U];
          x1 = m->xsize;
          if (sub==0UL && x0>0UL) {
             x1 = x0;
@@ -4900,11 +5282,11 @@ static void inv(pMENU m, unsigned long sub, unsigned long k)
       }
       else if (sub==0UL) {
          x0 = 0UL;
-         x1 = (unsigned long)m->subk[k-1UL][0U];
+         x1 = (uint32_t)m->subk[k-1UL][0U];
       }
       else {
-         x0 = (unsigned long)m->subk[k-1UL][sub-1UL];
-         x1 = (unsigned long)m->subk[k-1UL][sub];
+         x0 = (uint32_t)m->subk[k-1UL][sub-1UL];
+         x1 = (uint32_t)m->subk[k-1UL][sub];
       }
       if (x1==0UL) x1 = m->xsize;
       y00 = (k-1UL)*m->yknob+1UL;
@@ -4914,87 +5296,147 @@ static void inv(pMENU m, unsigned long sub, unsigned long k)
 } /* end inv() */
 
 
-static void movewin(pMENU pm, long dx, long dy)
+static void movewin(pMENU pm, int32_t dx, int32_t dy)
 {
-   unsigned long yc;
-   unsigned long xc;
-   if ((unsigned long)pm->pullconf>0UL) {
-      xc = (unsigned long)useri_conf2int(pm->pullconf, 0UL, 0L, 32000L, 0L);
-      yc = (unsigned long)useri_conf2int(pm->pullconf, 1UL, 0L, 32000L, 0L);
-      xc = (unsigned long)inclim((long)xc, dx, 0L);
-      yc = (unsigned long)inclim((long)yc, dy, 0L);
-      if (xc+pm->xsize>=(unsigned long)maptool_xsize) xc = 32000UL;
-      if (yc+pm->ysize>=(unsigned long)maptool_ysize) yc = 32000UL;
-      useri_saveXYtocfg(pm->pullconf, (long)xc, (long)yc);
+   uint32_t yc;
+   uint32_t xc;
+   if ((uint32_t)pm->pullconf>0UL) {
+      xc = (uint32_t)useri_conf2int(pm->pullconf, 0UL, 0L, 32000L, 0L);
+      yc = (uint32_t)useri_conf2int(pm->pullconf, 1UL, 0L, 32000L, 0L);
+      xc = (uint32_t)inclim((int32_t)xc, dx, 0L);
+      yc = (uint32_t)inclim((int32_t)yc, dy, 0L);
+      if (xc+pm->xsize>=(uint32_t)maptool_xsize) xc = 32000UL;
+      if (yc+pm->ysize>=(uint32_t)maptool_ysize) yc = 32000UL;
+      useri_saveXYtocfg(pm->pullconf, (int32_t)xc, (int32_t)yc);
    }
 } /* end movewin() */
 
-#define useri_SYMS 17
+static void dosymchoose(pMENU);
 
 #define useri_YS 12
 
-#define useri_S "\370\367|"
+#define useri_S "\361\371|"
 
 
-static void symchoose(char myorbeacon)
+static void dosymchoose(pMENU menu)
 /* draw symbol chart to select one */
 {
-   pMENU menu;
-   unsigned long y;
-   unsigned long x;
+   uint32_t wi;
+   uint32_t yy;
+   uint32_t xx;
+   uint32_t y;
+   uint32_t x;
    char t;
    struct maptool_PIX * anonym;
-   maptool_pIMAGE anonym0;
-   unsigned long tmp;
-   unsigned long tmp0;
-   newmenu(&menu, 275UL, 17UL, 12UL, useri_bCOLOR);
+   struct maptool_PIX * anonym0;
+   struct maptool_PIX * anonym1;
+   maptool_pIMAGE anonym2;
+   maptool_pIMAGE anonym3;
+   maptool_pIMAGE anonym4;
+   char tmp;
+   uint32_t tmp0;
+   uint32_t tmp1;
+   menu->oldknob = 0UL;
+   wi = (uint32_t)microspace("\361", 2ul);
    for (y = 0UL; y<=11UL; y++) {
-      addline(menu, "\370\367|\370\367|\370\367|\370\367|\370\367|\370\367|\37\
-0\367|\370\367|\370\367|\370\367|\370\367|\370\367|\370\367|\370\367|\370\367\
-|\370\367|", 49ul, (char *) &myorbeacon, 1u/1u, 2100UL+16UL*(11UL-y));
+      addline(menu, "\361\371|\361\371|\361\371|\361\371|\361\371|\361\371|\36\
+1\371|\361\371|\361\371|\361\371|\361\371|\361\371|\361\371|\361\371|\361\371\
+|\361\371|", 49ul, (char *)(tmp = (char)menu->scroll,&tmp), 1u/1u,
+                2100UL+16UL*(11UL-y));
    } /* end for */
-   tmp = menu->image->Len0-1;
+   tmp0 = menu->image->Len0-1;
    y = 0UL;
-   if (y<=tmp) for (;; y++) {
-      if (y%17UL) {
-         tmp0 = menu->image->Len1-1;
-         x = 0UL;
-         if (x<=tmp0) for (;; x++) {
-            if (x%17UL!=1UL) {
-               { /* with */
-                  struct maptool_PIX * anonym = (anonym0 = menu->image,
-                &anonym0->Adr[(x)*anonym0->Len0+y]);
-                  anonym->r = 200U;
-                  anonym->g = 200U;
-                  anonym->b = 200U;
-               }
+   if (y<=tmp0) for (;; y++) {
+      tmp1 = menu->image->Len1-1;
+      x = 0UL;
+      if (x<=tmp1) for (;; x++) {
+         if (x%(aprsdecode_lums.symsize+wi)>1UL && (y+1UL)
+                %(aprsdecode_lums.symsize+2UL)>1UL) {
+            { /* with */
+               struct maptool_PIX * anonym = (anonym2 = menu->image,
+                &anonym2->Adr[(x)*anonym2->Len0+y]);
+               anonym->r = 140U;
+               anonym->g = 140U;
+               anonym->b = 140U;
             }
-            if (x==tmp0) break;
-         } /* end for */
-      }
-      if (y==tmp) break;
+         }
+         else {
+            { /* with */
+               struct maptool_PIX * anonym0 = (anonym3 = menu->image,
+                &anonym3->Adr[(x)*anonym3->Len0+y]);
+               anonym0->r = 0U;
+               anonym0->g = 0U;
+               anonym0->b = 0U;
+            }
+         }
+         if (x==tmp1) break;
+      } /* end for */
+      if (y==tmp0) break;
    } /* end for */
    for (y = 0UL; y<=11UL; y++) {
       if (y<6UL) t = '/';
       else t = '\\';
       for (x = 0UL; x<=15UL; x++) {
          maptool_drawsym(menu->image, t, (char)(32UL+x+16UL*(y%6UL)), 0,
-                (float)(x*17UL+10UL), (float)((11UL-y)*17UL+9UL), 250UL);
+                (float)(x*(aprsdecode_lums.symsize+wi)
+                +(aprsdecode_lums.symsize+2UL)/2UL+1UL),
+                (float)((11UL-y)*(aprsdecode_lums.symsize+2UL)
+                +(aprsdecode_lums.symsize+2UL)/2UL), 250UL);
+         if ((char)menu->scroll=='\326' && X2C_INL(x+y*16UL,192,
+                aprsdecode_click.onesymbolset)) {
+            tmp0 = aprsdecode_lums.symsize+1UL;
+            yy = 0UL;
+            if (yy<=tmp0) for (;; yy++) {
+               xx = 0UL;
+               do {
+                  { /* with */
+                     struct maptool_PIX * anonym1 = (anonym4 = menu->image,
+                &anonym4->Adr[(xx+x*(aprsdecode_lums.symsize+wi)+1UL)
+                *anonym4->Len0+(yy+(11UL-y)*(aprsdecode_lums.symsize+2UL))]);
+                
+                     anonym1->r = (uint16_t)((xx+yy)*30UL);
+                     anonym1->g = 1000U;
+                     anonym1->b = 300U;
+                  }
+                  if (yy==0UL || yy==aprsdecode_lums.symsize+1UL) ++xx;
+                  else xx += aprsdecode_lums.symsize+1UL;
+               } while (xx<aprsdecode_lums.symsize+2UL);
+               if (yy==tmp0) break;
+            } /* end for */
+         }
       } /* end for */
    } /* end for */
+   menu->redrawproc = dosymchoose;
+   menu->hiknob = 0UL;
+   menu->notoverdraw = 1;
+/*  menu^.ysize:=menu^.oldknob*menu^.yknob; */
+/*  menu^.oldknob:=0; */
+} /* end dosymchoose() */
+
+#define useri_YS0 12
+
+
+static void symchoose(char myorbeacon)
+{
+   pMENU menu;
+   uint32_t wi;
+   useri_rdonesymb(aprsdecode_click.onesymbol.tab!=0, 0);
+   wi = (uint32_t)microspace("\361", 2ul);
+   newmenu(&menu, 16UL*(aprsdecode_lums.symsize+wi)+2UL,
+                aprsdecode_lums.symsize+2UL, 12UL, useri_bCOLOR);
+   menu->scroll = (uint32_t)(uint8_t)myorbeacon;
+   dosymchoose(menu);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
 } /* end symchoose() */
 
-#define useri_SYMS0 17
-
-#define useri_S0 "\370\367|"
-
 
 static void overlaychoose(char myorbeacon)
+/*CONST S=SP9+SP8+"|"; */
 {
    pMENU menu;
-   newmenu(&menu, 156UL, aprsdecode_lums.fontysize+5UL, 5UL, useri_bCOLOR);
+   newmenu(&menu, 12UL*(aprsdecode_lums.fontxsize*2UL+1UL),
+                aprsdecode_lums.fontysize+5UL, 5UL, useri_bCOLOR);
    addline(menu, "0 |1 |2 |3 |4 |5 |6 |7 |8 |9 |", 31ul,
                 (char *) &myorbeacon, 1u/1u, 4100UL);
    addline(menu, "N |O |P |Q |R |S |T |U |V |W |X |Y |Z |", 40ul,
@@ -5008,15 +5450,15 @@ static void overlaychoose(char myorbeacon)
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
    /*  setmenupos(menu, xmouse.x, xmouse.y); */
-   menu->x0 = (unsigned long)useri_xmouse.x;
-   if (useri_xmouse.y>8L) menu->y00 = (unsigned long)(useri_xmouse.y-8L);
+   menu->x0 = (uint32_t)useri_xmouse.x;
+   if (useri_xmouse.y>8L) menu->y00 = (uint32_t)(useri_xmouse.y-8L);
    else menu->y00 = 0UL;
    menu->wid = 203UL;
 } /* end overlaychoose() */
 
 
-static void AppBlueButton(char s[], unsigned long s_len, char text[],
-                unsigned long text_len, char on)
+static void AppBlueButton(char s[], uint32_t s_len, char text[],
+                uint32_t text_len, char on)
 {
    X2C_PCOPY((void **)&text,text_len);
    if (on) aprsstr_Append(s, s_len, "\350", 2ul);
@@ -5025,31 +5467,32 @@ static void AppBlueButton(char s[], unsigned long s_len, char text[],
 } /* end AppBlueButton() */
 
 
-static void AddEditLine(pMENU m, char cmd[], unsigned long cmd_len,
-                const char text[], unsigned long text_len,
-                unsigned char conf, unsigned long help0)
+static void AddEditLine(pMENU m, char cmd[], uint32_t cmd_len,
+                const char text[], uint32_t text_len, uint8_t conf,
+                uint32_t help0)
 {
    X2C_PCOPY((void **)&cmd,cmd_len);
    ++m->scroll;
    if (text[0UL]==0) {
       addline(m, "", 1ul, cmd, cmd_len, help0);
-      m->clampkb |= (1UL<<m->scroll);
+      X2C_INCL(m->clampkb,m->scroll,61);
       m->confidx[m->scroll] = conf;
       keybknob(m, m->scroll, 0, 0UL);
    }
    else {
       addline(m, text, text_len, " ", 2ul, help0);
-      m->clampkb &= ~(1UL<<m->scroll);
+      X2C_EXCL(m->clampkb,m->scroll,61);
       m->confidx[m->scroll] = 0U;
    }
    X2C_PFREE(cmd);
 } /* end AddEditLine() */
 
 
-static void managemsg(unsigned long scroll, unsigned long num)
+static void managemsg(uint32_t scroll, uint32_t num)
 {
    pMENU menu;
-   newmenu(&menu, 50UL, aprsdecode_lums.fontysize+5UL, 6UL, useri_bCOLOR);
+   newmenu(&menu, aprsdecode_lums.fontxsize*8UL+4UL,
+                aprsdecode_lums.fontysize+5UL, 6UL, useri_bCOLOR);
    menu->scroll = scroll-num;
    addline(menu, "Edit", 5ul, "\260", 2ul, 6900UL);
    addline(menu, "Set Port", 9ul, "\260", 2ul, 6901UL);
@@ -5062,7 +5505,7 @@ static void managemsg(unsigned long scroll, unsigned long num)
 } /* end managemsg() */
 
 
-static void setmsgport(unsigned long p)
+static void setmsgport(uint32_t p)
 {
    char c;
    if (p==0UL) c = 'A';
@@ -5072,8 +5515,6 @@ static void setmsgport(unsigned long p)
 } /* end setmsgport() */
 
 #define useri_YKNOB 20
-
-#define useri_XSIZE 462
 
 #define useri_YPOS 200
 
@@ -5090,25 +5531,24 @@ static void setmsgport(unsigned long p)
 
 #define useri_REJECTED "REJECTED"
 
-#define useri_XCHAR 77
-
 
 static void sendmsg(void)
 {
    pMENU m;
-   unsigned long i;
-   unsigned long cnt;
-   unsigned long cntm;
-   unsigned long xw;
-   long ii;
+   uint32_t xchar;
+   uint32_t i;
+   uint32_t cnt;
+   uint32_t cntm;
+   uint32_t xw;
+   int32_t ii;
    aprsdecode_pTXMESSAGE pmh;
    aprsdecode_pTXMESSAGE pm;
    char h[201];
    char s[201];
    char po;
-   unsigned long ohs;
-   unsigned long hks;
-   unsigned long oks;
+   uint32_t ohs;
+   uint32_t hks;
+   uint32_t oks;
    char tmp;
    cntm = 0UL;
    pm = aprsdecode_txmessages;
@@ -5118,11 +5558,13 @@ static void sendmsg(void)
    }
    cnt = cntm;
    i = useri_mainys()/20UL;
+   if (i>=60UL) i = 60UL;
    if (i<7UL) i = 1UL;
    else i -= 6UL;
    if (cnt>i) cnt = i;
-   xw = 462UL;
-   if (462UL>(unsigned long)maptool_xsize) xw = (unsigned long)maptool_xsize;
+   xw = aprsdecode_lums.fontxsize*77UL;
+   if (xw>(uint32_t)maptool_xsize) xw = (uint32_t)maptool_xsize;
+   xchar = xw/aprsdecode_lums.fontxsize;
    m = findmenuid(228UL);
    refrmenu(&m, xw, aprsdecode_lums.fontysize+7UL, cnt+6UL, useri_bCOLOR, 0);
    oks = m->oldknob;
@@ -5138,10 +5580,11 @@ static void sendmsg(void)
          aprstext_encbeacon(s, 201ul, &i);
          ii = aprsstr_InStr(s, 201ul, ":)", 3ul);
          if (ii>1L) {
-            aprsstr_Delstr(s, 201ul, 0UL, (unsigned long)(ii+1L));
+            aprsstr_Delstr(s, 201ul, 0UL, (uint32_t)(ii+1L));
             icfg(useri_fMSGTEXT, s, 201ul);
             if (aprsstr_Length(s, 201ul)>=67UL) {
-               useri_say("Beacon does not fit in Msg!", 28ul, 4UL, 'e');
+               useri_say("\012Beacon does not fit in Msg!\012", 30ul, 4UL,
+                'e');
             }
          }
       }
@@ -5151,13 +5594,13 @@ ose", 66ul, "\255", 2ul, 6800UL);
    ++m->scroll;
    addline(m, "", 1ul, "\255", 2ul, 6810UL);
    ++m->scroll;
-   m->clampkb |= 0x4UL;
-   m->confidx[2U] = 131U;
+   X2C_INCL(m->clampkb,2U,61);
+   m->confidx[2U] = 133U;
    keybknob(m, 2UL, 0, 0UL);
    addline(m, "", 1ul, "\255", 2ul, 6815UL);
    ++m->scroll;
-   m->clampkb |= 0x8UL;
-   m->confidx[3U] = 130U;
+   X2C_INCL(m->clampkb,3U,61);
+   m->confidx[3U] = 132U;
    keybknob(m, 3UL, 0, 0UL);
    useri_confstr(useri_fMSGPORT, s, 201ul);
    po = X2C_CAP(s[0U]);
@@ -5166,7 +5609,8 @@ ose", 66ul, "\255", 2ul, 6800UL);
    AppBlueButton(s, 201ul, "      Net   |", 14ul, po=='N' || po=='I');
    for (i = 1UL; i<=4UL; i++) {
       strncpy(h,"    RfPort ",201u);
-      aprsstr_Append(h, 201ul, (char *)(tmp = (char)(i+48UL),&tmp), 1u/1u);
+      aprsstr_Append(h, 201ul, (char *)(tmp = (char)(i+48UL),&tmp),
+                1u/1u);
       if (i!=4UL) aprsstr_Append(h, 201ul, " |", 3ul);
       AppBlueButton(s, 201ul, h, 201ul, po==(char)(i+48UL));
    } /* end for */
@@ -5192,8 +5636,10 @@ ose", 66ul, "\255", 2ul, 6800UL);
          else strncpy(h,"--:--:--",201u);
          aprsstr_Append(s, 201ul, h, 201ul);
          aprsstr_Append(s, 201ul, " |", 3ul);
-         if (pm->rej) strncpy(h,"REJECTED",201u);
-         else if (pm->acknum==0UL) strncpy(h,"        ",201u);
+         if (pm->rej) strncpy(h,"\350REJECTED",201u);
+         else if (pm->acknum==0UL) {
+            strncpy(h,"        ",201u);
+         }
          else if (pm->acktime>0UL) {
             aprsstr_TimeToStr(pm->acktime%86400UL, h, 201ul);
          }
@@ -5207,7 +5653,7 @@ ose", 66ul, "\255", 2ul, 6800UL);
          }
          aprsstr_Append(s, 201ul, h, 201ul);
          aprsstr_Append(s, 201ul, " |", 3ul);
-         aprsstr_IntToStr((long)pm->txcnt, 3UL, h, 201ul);
+         aprsstr_IntToStr((int32_t)pm->txcnt, 3UL, h, 201ul);
          aprsstr_Append(s, 201ul, h, 201ul);
          aprsstr_Append(s, 201ul, " |\361", 4ul);
          aprsstr_Append(s, 201ul, (char *) &pm->port, 1u/1u);
@@ -5230,8 +5676,8 @@ ose", 66ul, "\255", 2ul, 6800UL);
          else aprsstr_Append(s, 201ul, "-----", 6ul);
          aprsstr_Append(s, 201ul, "  |", 4ul);
          aprsstr_Append(s, 201ul, pm->msgtext, 67ul);
-         if (aprsstr_Length(s, 201ul)>77UL) {
-            s[77U] = 0;
+         if (aprsstr_Length(s, 201ul)>xchar) {
+            s[xchar] = 0;
             aprsstr_Append(s, 201ul, "...", 4ul);
          }
          addline(m, s, 201ul, "\257>", 3ul, 6804UL);
@@ -5253,61 +5699,23 @@ Txt |Message", 60ul, " ", 2ul, 6805UL);
    /*    m^.y0:=200; */
    m->pullconf = useri_fMENUXYMSG;
    m->pullyknob = 8UL;
-   if (xw<(unsigned long)maptool_xsize) {
-      i = ((unsigned long)maptool_xsize-xw)/2UL;
-   }
+   if (xw<(uint32_t)maptool_xsize) i = ((uint32_t)maptool_xsize-xw)/2UL;
    else i = 0UL;
    setmenupos(m, i, 200UL);
    m->oldsub = ohs;
    if (m->hiknob>0UL) {
-      if (X2C_IN(m->hiknob,31,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
+      if (X2C_INL(m->hiknob,61,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
       inv(m, m->oldsub, m->hiknob);
    }
 /*  END; */
 } /* end sendmsg() */
 
-
-static void linenoton(pCONFLINE pl)
-{
-   if (pl) pl->active = pl->active==0U;
-} /* end linenoton() */
-
-
-static void configdelman(unsigned char cfg, unsigned long num,
-                unsigned long n)
-/* 1 on/off, 2 move to editline, 3 del, first n is 1 */
-{
-   pCONFLINE po;
-   pCONFLINE pl;
-   pl = 0;
-   if ((unsigned long)cfg<=153UL) pl = configs[cfg].lines;
-   po = 0;
-   while (n>1UL && pl) {
-      po = pl;
-      pl = pl->next;
-      --n;
-   }
-   if (pl) {
-      if (num==1UL) linenoton(pl);
-      else if (num==2UL || num==3UL) {
-         if (po) po->next = pl->next;
-         else configs[cfg].lines = pl->next;
-         if (num==2UL) {
-            icfg(useri_fEDITLINE, pl->line, 201ul);
-                /* save deleted to editline */
-         }
-         osic_free((X2C_ADDRESS *) &pl, sizeof(struct CONFLINE));
-      }
-   }
-   useri_refresh = 1;
-} /* end configdelman() */
-
 /* === beacons === */
 
-static void DelBeaconByName(char dname[], unsigned long dname_len)
+static void DelBeaconByName(char dname[], uint32_t dname_len)
 {
    aprsdecode_MONCALL name;
-   unsigned long cnt;
+   uint32_t cnt;
    char symb[3];
    char isbad;
    char isdel;
@@ -5336,9 +5744,6 @@ static char isbkn(char typ)
    return (((typ!='O' && typ!='H') && typ!='P') && typ!='I') && typ!='J';
 } /* end isbkn() */
 
-#define useri_XSIZE0 300
-/*      YPOS=140; */
-
 #define useri_MLINES0 15
 /* static menu lines */
 
@@ -5346,12 +5751,12 @@ static char isbkn(char typ)
 static void beaconeditor(void)
 {
    pMENU m;
-   unsigned long yp;
-   unsigned long xp;
-   unsigned long i;
-   unsigned long cntm;
-   unsigned long cnt;
-   unsigned long xw;
+   uint32_t yp;
+   uint32_t xp;
+   uint32_t i;
+   uint32_t cntm;
+   uint32_t cnt;
+   uint32_t xw;
    char h[201];
    char s[201];
    char bkn;
@@ -5365,11 +5770,12 @@ static void beaconeditor(void)
    char isbad;
    char isdel;
    char isobj;
-   struct aprspos_POSITION mypos;
-   unsigned long ohs;
-   unsigned long hks;
-   unsigned long oks;
+   struct aprsstr_POSITION mypos;
+   uint32_t ohs;
+   uint32_t hks;
+   uint32_t oks;
    char tmp;
+   uint32_t tmp0;
    useri_confstr(useri_fRBNAME, ename, 9ul);
    replace = 0;
    cntm = 0UL;
@@ -5384,11 +5790,12 @@ static void beaconeditor(void)
    }
    cnt = cntm;
    i = useri_mainys()/(aprsdecode_lums.fontysize+5UL);
+   if (i>=60UL) i = 60UL;
    if (i<16UL) i = 1UL;
    else if (useri_beaconed) i -= 15UL;
    if (cnt>i) cnt = i;
-   xw = 300UL;
-   if (300UL>(unsigned long)maptool_xsize) xw = (unsigned long)maptool_xsize;
+   xw = aprsdecode_lums.fontxsize*50UL;
+   if (xw>(uint32_t)maptool_xsize) xw = (uint32_t)maptool_xsize;
    m = findmenuid(226UL);
    /*IF m=NIL THEN beaconed:=TRUE END; */
    refrmenu(&m, xw, aprsdecode_lums.fontysize+5UL, cnt+15UL+1UL,
@@ -5448,8 +5855,10 @@ static void beaconeditor(void)
       }
       addline(m, h, 201ul, "\223>", 3ul, 8138UL);
       ++m->scroll;
-      drawsymsquare(m->image, s[0U], s[1U], (long)(m->xsize-25UL),
-                (long)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
+      drawsymsquare(m->image, s[0U], s[1U],
+                (int32_t)(((m->xsize-aprsdecode_lums.symsize)
+                -aprsdecode_lums.fontxsize)-8UL),
+                (int32_t)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
       strncpy(s,"\355",201u);
       AppBlueButton(s, 201ul, " Beacon |", 10ul, bkn);
       AppBlueButton(s, 201ul, "Object/d|", 10ul, typ=='O');
@@ -5477,8 +5886,8 @@ static void beaconeditor(void)
       AppBlueButton(s, 201ul, "   Tx Net |", 12ul, port=='N');
       for (i = 1UL; i<=4UL; i++) {
          strncpy(h,"  TxPort ",201u);
-         aprsstr_Append(h, 201ul, (char *)(tmp = (char)(i+48UL),&tmp),
-                1u/1u);
+         aprsstr_Append(h, 201ul, (char *)(tmp = (char)(i+48UL),
+                &tmp), 1u/1u);
          if (i!=4UL) aprsstr_Append(h, 201ul, "|", 2ul);
          AppBlueButton(s, 201ul, h, 201ul, port==(char)(i+48UL));
       } /* end for */
@@ -5491,29 +5900,42 @@ static void beaconeditor(void)
       useri_confstrings(useri_fRBTEXT, cntm, 1, h, 201ul);
       aprsdecode_getbeaconname(h, 201ul, name, 9ul, symb, 3ul, &isobj,
                 &isdel, &isbad);
+      /*
+            IF isbad THEN
+              IF symb[0]<" " THEN s:=MOP4+MOP5+"     ?? " ELSE s:=MOP4+MOP5+"        " END;
+            ELSIF beaconed & StrCmp(name, ename) THEN s:=MOP8+"        ";
+      --      ELSIF isbad THEN 
+      --        IF symb[0]<" " THEN s:=MOP4+MOP5+"     ?? " ELSE s:=MOP4+MOP5+"        " END;
+            ELSIF isdel       THEN s:=MOP4+MOP1+"        ";
+            ELSE s:="        "; END;       
+      */
       if (isbad) {
-         if ((unsigned char)symb[0U]<' ') strncpy(s,"\352\353     ?? ",201u);
-         else strncpy(s,"\352\353        ",201u);
+         if ((uint8_t)symb[0U]<' ') strncpy(s,"\346\352\353  ?? ",201u);
+         else strncpy(s,"\346\352\353  ",201u);
       }
       else if (useri_beaconed && aprsstr_StrCmp(name, 9ul, ename, 9ul)) {
-         strncpy(s,"\356        ",201u);
+         strncpy(s,"\346\356  ",201u);
       }
       else if (isdel) {
-         /*      ELSIF isbad THEN  */
-         /*        IF symb[0]<" " THEN s:=MOP4+MOP5+"     ?? " ELSE s:=MOP4+MOP5+"        " END;
-                 */
-         strncpy(s,"\352\347        ",201u);
+         strncpy(s,"\346\352\347  ",201u);
       }
-      else strncpy(s,"        ",201u);
+      else strncpy(s,"\346  ",201u);
+      tmp0 = aprsdecode_lums.symsize/aprsdecode_lums.fontxsize;
+      i = 0UL;
+      if (i<=tmp0) for (;; i++) {
+         aprsstr_Append(s, 201ul, " ", 2ul);
+         if (i==tmp0) break;
+      } /* end for */
       aprsstr_Append(s, 201ul, h, 201ul);
-      if (aprsstr_Length(s, 201ul)>=54UL) {
-         s[53U] = 0;
+      if (aprsstr_Length(s, 201ul)>=49UL) {
+         s[46U] = 0;
          aprsstr_Append(s, 201ul, "...", 4ul);
       }
       addline(m, s, 201ul, "\223>", 3ul, 8170UL);
-      if ((unsigned char)symb[0U]>=' ') {
-         drawsymsquare(m->image, symb[0U], symb[1U], 24L,
-                (long)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
+      if ((uint8_t)symb[0U]>=' ') {
+         drawsymsquare(m->image, symb[0U], symb[1U],
+                (int32_t)(aprsdecode_lums.symsize/2UL+aprsdecode_lums.fontxsize+10UL)
+                , (int32_t)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
       }
       onoff(m, 8L, configson(useri_fRBTEXT, cntm));
       ++cntm;
@@ -5531,9 +5953,7 @@ static void beaconeditor(void)
    m->wid = 226UL;
    m->pullconf = useri_fMENUXYBEACON;
    m->pullyknob = 8UL;
-   if (xw<(unsigned long)maptool_xsize) {
-      xp = ((unsigned long)maptool_xsize-xw)/2UL;
-   }
+   if (xw<(uint32_t)maptool_xsize) xp = ((uint32_t)maptool_xsize-xw)/2UL;
    else xp = 0UL;
    if (aprsdecode_lums.headmenuy) yp = aprsdecode_lums.fontysize;
    else yp = 0UL;
@@ -5557,18 +5977,18 @@ static void beaconeditor(void)
    */
    m->oldsub = ohs;
    if (m->hiknob>0UL && m->hiknob<=i) {
-      if (X2C_IN(m->hiknob,31,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
+      if (X2C_INL(m->hiknob,61,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
       inv(m, m->oldsub, m->hiknob);
    }
 } /* end beaconeditor() */
 
 
-static void managebeacon(unsigned long scroll, unsigned long knob,
-                unsigned long subknob, char folded)
+static void managebeacon(uint32_t scroll, uint32_t knob,
+                uint32_t subknob, char folded)
 {
    char ch;
    pMENU menu;
-   unsigned long len;
+   uint32_t len;
    char typ;
    char h[1000];
    char s[1000];
@@ -5637,8 +6057,8 @@ static void managebeacon(unsigned long scroll, unsigned long knob,
    }
    else if (!useri_beaconed || knob>14UL) {
       if (folded) {
-         newmenu(&menu, 55UL, aprsdecode_lums.fontysize+5UL, 8UL,
-                useri_bTRANSP);
+         newmenu(&menu, aprsdecode_lums.fontxsize*9UL+4UL,
+                aprsdecode_lums.fontysize+5UL, 8UL, useri_bTRANSP);
          menu->scroll = knob-scroll;
          addline(menu, "Edit Cut", 9ul, "\213", 2ul, 8180UL);
          addline(menu, "Send now", 9ul, "\213", 2ul, 8182UL);
@@ -5709,7 +6129,7 @@ static void managebeacon(unsigned long scroll, unsigned long knob,
 } /* end managebeacon() */
 
 
-static void dobeacon(unsigned long scroll, unsigned long knob)
+static void dobeacon(uint32_t scroll, uint32_t knob)
 /* do beacon ed fold menu */
 {
    char s[301];
@@ -5737,10 +6157,10 @@ static void beaconlen(void)
 {
    char h[201];
    char s[201];
-   unsigned long len;
+   uint32_t len;
    aprstext_encbeacon(s, 201ul, &len);
    strncpy(s,"Beacon len=",201u);
-   aprsstr_IntToStr((long)len, 1UL, h, 201ul);
+   aprsstr_IntToStr((int32_t)len, 1UL, h, 201ul);
    aprsstr_Append(s, 201ul, h, 201ul);
    useri_say(s, 201ul, 4UL, 'b');
 } /* end beaconlen() */
@@ -5748,22 +6168,22 @@ static void beaconlen(void)
 /* === beacons === */
 /* === digi === */
 
-static void extractdigi(char s[], unsigned long s_len, char vv[],
-                unsigned long vv_len, char vn[], unsigned long vn_len,
-                char vx[], unsigned long vx_len, char * from, char * to,
-                char * dir, char * cut, unsigned long * t,
-                unsigned long * km)
+static void extractdigi(char s[], uint32_t s_len, char vv[],
+                uint32_t vv_len, char vn[], uint32_t vn_len,
+                char vx[], uint32_t vx_len, char * from,
+                char * to, char * dir, char * cut,
+                uint32_t * t, uint32_t * km)
 {
    char h[201];
    X2C_PCOPY((void **)&s,s_len);
    aprsstr_Extractword(s, s_len, h, 201ul);
    *from = h[0U];
-   if ((((unsigned char)*from<'1' || (unsigned char)*from>'4') && *from!='*')
-                 && *from!='N') *from = '*';
+   if ((((uint8_t)*from<'1' || (uint8_t)*from>'4') && *from!='*')
+                && *from!='N') *from = '*';
    *to = h[1U];
-   if ((unsigned char)*to<'1' || (unsigned char)*to>'4') *to = '1';
-   *dir = (unsigned char)h[2U]<='1';
-   *cut = !((unsigned long)(unsigned char)h[2U]&1);
+   if ((uint8_t)*to<'1' || (uint8_t)*to>'4') *to = '1';
+   *dir = (uint8_t)h[2U]<='1';
+   *cut = !((uint32_t)(uint8_t)h[2U]&1);
    aprsstr_Extractword(s, s_len, h, 201ul);
    if (!aprsstr_StrToCard(h, 201ul, t) || *t>86400UL) *t = 890UL;
    aprsstr_Extractword(s, s_len, h, 201ul);
@@ -5793,23 +6213,26 @@ static void extractdigi(char s[], unsigned long s_len, char vv[],
    X2C_PFREE(s);
 } /* end extractdigi() */
 
-#define useri_XSIZE1 300
-
 #define useri_DIGIMLINES 6
 /* static menu lines digi config */
+
+#define useri_S1 "   |   |   "
+
+#define useri_S2 "   |   |   |     "
 
 
 static void digieditor(void)
 {
    pMENU m;
-   unsigned long radius;
-   unsigned long duptime;
-   unsigned long yp;
-   unsigned long xp;
-   unsigned long i;
-   unsigned long cntm;
-   unsigned long cnt;
-   unsigned long xw;
+   uint32_t xchar;
+   uint32_t radius;
+   uint32_t duptime;
+   uint32_t yp;
+   uint32_t xp;
+   uint32_t i;
+   uint32_t cntm;
+   uint32_t cnt;
+   uint32_t xw;
    char vx[201];
    char vn[201];
    char vv[201];
@@ -5819,20 +6242,21 @@ static void digieditor(void)
    char from;
    char cutpath;
    char direct;
-   unsigned long ohs;
-   unsigned long hks;
-   unsigned long oks;
+   uint32_t ohs;
+   uint32_t hks;
+   uint32_t oks;
    /*  confstr(fDIGI, ename); */
    /*  replace:=FALSE; */
-   cntm = cntconfigs(useri_fDIGI);
+   cntm = cntconfigs(useri_fDIGI, 1);
    cnt = cntm;
    /*  i:=mainys() DIV (lums.fontysize+5); */
    /*  IF i<DIGIMLINES+1 THEN i:=1 ELSIF digied THEN DEC(i, DIGIMLINES) END;
                  */
    /*  IF cnt>i THEN cnt:=i END; */
-   if (cnt>=24UL) cnt = 24UL;
-   xw = 300UL;
-   if (300UL>(unsigned long)maptool_xsize) xw = (unsigned long)maptool_xsize;
+   if (cnt>=54UL) cnt = 54UL;
+   xw = aprsdecode_lums.fontxsize*60UL;
+   if (xw>(uint32_t)maptool_xsize) xw = (uint32_t)maptool_xsize;
+   xchar = xw/aprsdecode_lums.fontxsize;
    m = findmenuid(224UL);
    if (m==0) digiedline[0U] = 0;
    refrmenu(&m, xw, aprsdecode_lums.fontysize+5UL, cnt+6UL+1UL, useri_bCOLOR,
@@ -5870,14 +6294,15 @@ static void digieditor(void)
       aprsstr_Extractword(h, 201ul, vv, 201ul);
       aprsstr_Extractword(h, 201ul, vv, 201ul);
       aprsstr_Append(s, 201ul, h, 201ul);
-      if (aprsstr_Length(s, 201ul)>=54UL) {
-         s[53U] = 0;
+      if (aprsstr_Length(s, 201ul)>xchar) {
+         s[xchar] = 0;
          aprsstr_Append(s, 201ul, "...", 4ul);
       }
       addline(m, s, 201ul, "\314>", 3ul, 8335UL);
-      onoff(m, 8L, configson(useri_fDIGI, cntm));
-      onoff(m, 72L, direct);
-      onoff(m, 105L, cutpath);
+      onoff(m, (int32_t)(aprsdecode_lums.fontxsize+3UL),
+                configson(useri_fDIGI, cntm));
+      onoff(m, microspace("   |   |   ", 12ul), direct);
+      onoff(m, microspace("   |   |   |     ", 18ul), cutpath);
       ++cntm;
       --cnt;
    }
@@ -5892,22 +6317,20 @@ static void digieditor(void)
    m->wid = 224UL;
    m->pullconf = useri_fMENUXYDIGI;
    m->pullyknob = 8UL;
-   if (xw<(unsigned long)maptool_xsize) {
-      xp = ((unsigned long)maptool_xsize-xw)/2UL;
-   }
+   if (xw<(uint32_t)maptool_xsize) xp = ((uint32_t)maptool_xsize-xw)/2UL;
    else xp = 0UL;
    if (aprsdecode_lums.headmenuy) yp = aprsdecode_lums.fontysize;
    else yp = 0UL;
    setmenupos(m, xp, yp);
    m->oldsub = ohs;
    if (m->hiknob>0UL && m->hiknob<=i) {
-      if (X2C_IN(m->hiknob,31,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
+      if (X2C_INL(m->hiknob,61,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
       inv(m, m->oldsub, m->hiknob);
    }
 } /* end digieditor() */
 
 
-static void appdigi(char s[], unsigned long s_len, unsigned char c,
+static void appdigi(char s[], uint32_t s_len, uint8_t c,
                 char typ)
 {
    char ss[200];
@@ -5923,22 +6346,22 @@ static void appdigi(char s[], unsigned long s_len, unsigned char c,
 } /* end appdigi() */
 
 
-static void rollport(char * p, const char s[], unsigned long s_len)
+static void rollport(char * p, const char s[], uint32_t s_len)
 /* return next char in string */
 {
-   *p = s[(unsigned long)(aprsstr_InStr(s, s_len, (char *)p,
+   *p = s[(uint32_t)(aprsstr_InStr(s, s_len, (char *)p,
                 1u/1u)+1L)%aprsstr_Length(s, s_len)];
 } /* end rollport() */
 
 
-static void dodigi(unsigned long scroll, unsigned long knob,
-                unsigned long subknob, unsigned char caller)
+static void dodigi(uint32_t scroll, uint32_t knob, uint32_t subknob,
+                uint8_t caller)
 /* do digi editing */
 {
-   unsigned long i;
-   unsigned long cd;
-   unsigned long duptime;
-   unsigned long radius;
+   uint32_t i;
+   uint32_t cd;
+   uint32_t duptime;
+   uint32_t radius;
    char vx[200];
    char vn[200];
    char vv[200];
@@ -5954,8 +6377,8 @@ static void dodigi(unsigned long scroll, unsigned long knob,
    if (caller==2U) {
       if (subknob==5UL) {
          /* fold submenu */
-         newmenu(&menu, 55UL, aprsdecode_lums.fontysize+5UL, 3UL,
-                useri_bTRANSP);
+         newmenu(&menu, aprsdecode_lums.fontxsize*9UL+4UL,
+                aprsdecode_lums.fontysize+5UL, 3UL, useri_bTRANSP);
          menu->scroll = knob-scroll;
          addline(menu, "Edit", 5ul, "\315", 2ul, 8360UL);
          addline(menu, "Delete", 7ul, "\315", 2ul, 8365UL);
@@ -5973,8 +6396,8 @@ static void dodigi(unsigned long scroll, unsigned long knob,
          icfg(useri_fDIGIX, vx, 200ul);
          icfg(useri_fDIGINN, vn, 200ul);
          icfg(useri_fDIGIVIA, vv, 200ul);
-         useri_int2cfg(useri_fDIGIRADIUS, (long)radius);
-         useri_int2cfg(useri_fDIGITIME, (long)duptime);
+         useri_int2cfg(useri_fDIGIRADIUS, (int32_t)radius);
+         useri_int2cfg(useri_fDIGITIME, (int32_t)duptime);
       }
       else if (knob==2UL) {
          /* Delete */
@@ -6031,12 +6454,12 @@ static void dodigi(unsigned long scroll, unsigned long knob,
       }
       else if (subknob==3UL) {
          /* toggle First */
-         s[2U] = (char)((unsigned char)(unsigned char)s[2U]^0x2U);
+         s[2U] = (char)((uint8_t)(uint8_t)s[2U]^0x2U);
          confreplace(useri_fDIGI, (knob-scroll)-1UL, 1, s, 200ul);
       }
       else if (subknob==4UL) {
          /* toggle Last*/
-         s[2U] = (char)((unsigned char)(unsigned char)s[2U]^0x1U);
+         s[2U] = (char)((uint8_t)(uint8_t)s[2U]^0x1U);
          confreplace(useri_fDIGI, (knob-scroll)-1UL, 1, s, 200ul);
       }
    }
@@ -6046,7 +6469,7 @@ static void dodigi(unsigned long scroll, unsigned long knob,
 /* === digi === */
 /* === list window === */
 
-static void freelist(struct LISTBUFFER * b, unsigned long from)
+static void freelist(struct LISTBUFFER * b, uint32_t from)
 /* truncate listline buffer */
 {
    pLISTLINE bo;
@@ -6069,23 +6492,24 @@ static void freelist(struct LISTBUFFER * b, unsigned long from)
       bl = bl->next;
       /*  len:=SIZE(bo^)-HIGH(bo^.text)+1+Length(bo^.text); */
       useri_debugmem.mon -= bo->len;
-      osic_free((X2C_ADDRESS *) &bo, bo->len);
+      osic_free((char * *) &bo, bo->len);
       if (b->listlinecnt>0UL) --b->listlinecnt;
    }
 } /* end freelist() */
 
 
-static void drawbutt(maptool_pIMAGE img, long x, long y, long xs, long ys)
+static void drawbutt(maptool_pIMAGE img, int32_t x, int32_t y,
+                int32_t xs, int32_t ys)
 {
    struct maptool_PIX buttcol;
-   long i;
+   int32_t i;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0;
    struct maptool_PIX * anonym1;
    struct maptool_PIX * anonym2;
-   long tmp;
-   if (((((xs>=0L && ys>=0L) && x>=0L) && y>=0L) && (x+xs)-1L<=(long)
-                (img->Len1-1)) && (y+ys)-1L<=(long)(img->Len0-1)) {
+   int32_t tmp;
+   if (((((xs>=0L && ys>=0L) && x>=0L) && y>=0L) && (x+xs)-1L<=(int32_t)
+                (img->Len1-1)) && (y+ys)-1L<=(int32_t)(img->Len0-1)) {
       buttcol.r = 200U;
       buttcol.g = 200U;
       buttcol.b = 200U;
@@ -6130,18 +6554,18 @@ static void drawbutt(maptool_pIMAGE img, long x, long y, long xs, long ys)
 } /* end drawbutt() */
 
 
-static void drawarrow(maptool_pIMAGE img, long x, long y, long size,
-                char dir)
+static void drawarrow(maptool_pIMAGE img, int32_t x, int32_t y,
+                int32_t size, char dir)
 {
-   long jj;
-   long ii;
-   long t;
-   long s;
-   long j;
-   long i;
+   int32_t jj;
+   int32_t ii;
+   int32_t t;
+   int32_t s;
+   int32_t j;
+   int32_t i;
    struct maptool_PIX * anonym;
-   long tmp;
-   long tmp0;
+   int32_t tmp;
+   int32_t tmp0;
    s = size/2L-3L;
    tmp = s-1L;
    i = -s;
@@ -6158,12 +6582,15 @@ static void drawarrow(maptool_pIMAGE img, long x, long y, long size,
             ii = j;
          }
          else jj = j;
-         { /* with */
-            struct maptool_PIX * anonym = &img->Adr[(x+ii)*img->Len0+(y+jj)];
-                
-            anonym->r = 600U;
-            anonym->g = 600U;
-            anonym->b = 600U;
+         if (((x+ii<=(int32_t)(img->Len1-1) && y+jj<=(int32_t)
+                (img->Len0-1)) && x+ii>=0L) && y+jj>=0L) {
+            { /* with */
+               struct maptool_PIX * anonym = &img->Adr[(x+ii)
+                *img->Len0+(y+jj)];
+               anonym->r = 600U;
+               anonym->g = 600U;
+               anonym->b = 600U;
+            }
          }
          if (j==tmp0) break;
       } /* end for */
@@ -6172,13 +6599,14 @@ static void drawarrow(maptool_pIMAGE img, long x, long y, long size,
 } /* end drawarrow() */
 
 
-static void drawclosewin(maptool_pIMAGE img, long x, long y, long size)
+static void drawclosewin(maptool_pIMAGE img, int32_t x, int32_t y,
+                int32_t size)
 {
-   long s;
-   long i;
+   int32_t s;
+   int32_t i;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0;
-   long tmp;
+   int32_t tmp;
    s = size/3L;
    tmp = s;
    i = -s;
@@ -6200,15 +6628,16 @@ static void drawclosewin(maptool_pIMAGE img, long x, long y, long size)
 } /* end drawclosewin() */
 
 
-static void drawmaximize(maptool_pIMAGE img, long x, long y, long size)
+static void drawmaximize(maptool_pIMAGE img, int32_t x, int32_t y,
+                int32_t size)
 {
-   long s;
-   long i;
+   int32_t s;
+   int32_t i;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0;
    struct maptool_PIX * anonym1;
    struct maptool_PIX * anonym2;
-   long tmp;
+   int32_t tmp;
    s = size/2L-1L;
    tmp = s;
    i = -s;
@@ -6242,15 +6671,16 @@ static void drawmaximize(maptool_pIMAGE img, long x, long y, long size)
 } /* end drawmaximize() */
 
 
-static void drawnormal(maptool_pIMAGE img, long x, long y, long size)
+static void drawnormal(maptool_pIMAGE img, int32_t x, int32_t y,
+                int32_t size)
 {
-   long s;
-   long i;
+   int32_t s;
+   int32_t i;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0;
    struct maptool_PIX * anonym1;
    struct maptool_PIX * anonym2;
-   long tmp;
+   int32_t tmp;
    s = size/4L;
    tmp = s;
    i = -s;
@@ -6289,12 +6719,13 @@ static void drawnormal(maptool_pIMAGE img, long x, long y, long size)
 } /* end drawnormal() */
 
 
-static void drawminimize(maptool_pIMAGE img, long x, long y, long size)
+static void drawminimize(maptool_pIMAGE img, int32_t x, int32_t y,
+                int32_t size)
 {
-   long s;
-   long i;
+   int32_t s;
+   int32_t i;
    struct maptool_PIX * anonym;
-   long tmp;
+   int32_t tmp;
    s = size/3L;
    tmp = s;
    i = -s;
@@ -6311,7 +6742,8 @@ static void drawminimize(maptool_pIMAGE img, long x, long y, long size)
 } /* end drawminimize() */
 
 
-static long limscrbar(long pot, long drawsize, long potsize)
+static int32_t limscrbar(int32_t pot, int32_t drawsize,
+                int32_t potsize)
 {
    if (pot/256L+drawsize>potsize) pot = (potsize-drawsize)*256L;
    if (pot<0L) pot = 0L;
@@ -6319,10 +6751,11 @@ static long limscrbar(long pot, long drawsize, long potsize)
 } /* end limscrbar() */
 
 
-static void scrollbarpos(unsigned long * start, unsigned long * len,
-                long min0, long max0, long pot, long potsize)
+static void scrollbarpos(uint32_t * start, uint32_t * len,
+                int32_t min0, int32_t max0, int32_t pot,
+                int32_t potsize)
 {
-   long textsize;
+   int32_t textsize;
    textsize = max0-min0;
    if (pot<0L) pot = 0L;
    pot = pot/256L;
@@ -6332,18 +6765,18 @@ static void scrollbarpos(unsigned long * start, unsigned long * len,
    }
    else {
       if (pot>potsize) pot = potsize;
-      *start = (unsigned long)((textsize*pot)/potsize);
-      *len = (unsigned long)((textsize*textsize)/potsize);
+      *start = (uint32_t)((textsize*pot)/potsize);
+      *len = (uint32_t)((textsize*textsize)/potsize);
       if (*len<8UL) *len = 8UL;
-      if ((long)*len>=textsize) {
-         *len = (unsigned long)textsize;
+      if ((int32_t)*len>=textsize) {
+         *len = (uint32_t)textsize;
          *start = 0UL;
       }
-      else if ((long)(*start+*len)>textsize) {
-         *start = (unsigned long)(textsize-(long)*len);
+      else if ((int32_t)(*start+*len)>textsize) {
+         *start = (uint32_t)(textsize-(int32_t)*len);
       }
    }
-   *start += (unsigned long)min0;
+   *start += (uint32_t)min0;
 } /* end scrollbarpos() */
 /*
 PROCEDURE starttextpos(drawsize, pot, potsize:INTEGER):CARDINAL;
@@ -6356,21 +6789,21 @@ END starttextpos;
 */
 
 
-static void colorfind(char s[], unsigned long s_len)
+static void colorfind(char s[], uint32_t s_len)
 /* mark text in listwin if find string */
 {
-   long l;
-   long j;
-   long i;
-   long p;
+   int32_t l;
+   int32_t j;
+   int32_t i;
+   int32_t p;
    char f[10];
    useri_confstr(useri_fFIND, f, 10ul);
    p = aprsstr_InStr(s, s_len, f, 10ul);
    if (p>=0L) {
-      j = (long)(aprsstr_Length(s, s_len)+2UL);
-      if (j>(long)(s_len-1)) j = (long)(s_len-1);
+      j = (int32_t)(aprsstr_Length(s, s_len)+2UL);
+      if (j>(int32_t)(s_len-1)) j = (int32_t)(s_len-1);
       i = j-2L;
-      l = (long)aprsstr_Length(f, 10ul);
+      l = (int32_t)aprsstr_Length(f, 10ul);
       while (i>=0L) {
          s[j] = s[i];
          --j;
@@ -6388,20 +6821,20 @@ static void colorfind(char s[], unsigned long s_len)
 } /* end colorfind() */
 
 
-static void cpinv(maptool_pIMAGE im, long x, long y, long xshift, long from,
-                long to)
+static void cpinv(maptool_pIMAGE im, int32_t x, int32_t y,
+                int32_t xshift, int32_t from, int32_t to)
 /* invert marked text */
 {
-   long x1;
-   long x0;
+   int32_t x1;
+   int32_t x0;
    if (from<to) {
-      x0 = (x-1L)+(from-xshift)*6L;
-      x1 = x+2L+(to-xshift)*6L;
-      if (x1>0L && x0<(long)(im->Len1-1)) {
+      x0 = (x-1L)+(from-xshift)*(int32_t)aprsdecode_lums.fontxsize;
+      x1 = x+2L+(to-xshift)*(int32_t)aprsdecode_lums.fontxsize;
+      if (x1>0L && x0<(int32_t)(im->Len1-1)) {
          if (x0<0L) x0 = 0L;
-         if (x1>(long)(im->Len1-1)) x1 = (long)(im->Len1-1);
-         invline(im, (unsigned long)x0, (unsigned long)y, (unsigned long)x1,
-                (unsigned long)(y+(long)aprsdecode_lums.fontysize), 1);
+         if (x1>(int32_t)(im->Len1-1)) x1 = (int32_t)(im->Len1-1);
+         invline(im, (uint32_t)x0, (uint32_t)y, (uint32_t)x1,
+                (uint32_t)(y+(int32_t)aprsdecode_lums.fontysize), 1);
       }
    }
 } /* end cpinv() */
@@ -6412,18 +6845,18 @@ static void makelistwin(struct LISTBUFFER * b)
    pMENU m;
    pLISTLINE blh;
    pLISTLINE bl;
-   unsigned long ys;
-   unsigned long xs;
-   unsigned long linehi;
-   unsigned long x0;
-   unsigned long yp;
-   unsigned long xp;
-   unsigned long xch;
-   unsigned long xh;
-   unsigned long i;
-   unsigned long lc;
-   unsigned long cnt;
-   unsigned long xw;
+   uint32_t ys;
+   uint32_t xs;
+   uint32_t linehi;
+   uint32_t x0;
+   uint32_t yp;
+   uint32_t xp;
+   uint32_t xch;
+   uint32_t xh;
+   uint32_t i;
+   uint32_t lc;
+   uint32_t cnt;
+   uint32_t xw;
    struct maptool_PIX col;
    short mb;
    short mg;
@@ -6431,9 +6864,9 @@ static void makelistwin(struct LISTBUFFER * b)
    char s1[1001];
    char s[1001];
    char isicon;
-   unsigned long ohs;
-   unsigned long hks;
-   unsigned long oks;
+   uint32_t ohs;
+   uint32_t hks;
+   uint32_t oks;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0; /* left white line */
    struct maptool_PIX * anonym1; /* text end white line */
@@ -6469,8 +6902,8 @@ static void makelistwin(struct LISTBUFFER * b)
    maptool_pIMAGE anonym30;
    maptool_pIMAGE anonym31;
    maptool_pIMAGE anonym32;
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    cnt = b->listlinecnt;
    if (cnt==1UL) cnt = 2UL;
    linehi = aprsdecode_lums.fontysize;
@@ -6480,18 +6913,20 @@ static void makelistwin(struct LISTBUFFER * b)
       ys = useri_mainys()-linehi;
    }
    else if (isicon=='I') {
-      xw = linehi*3UL+4UL+aprsstr_Length(b->listwintitle, 31ul)*6UL;
+      xw = linehi*3UL+4UL+aprsstr_Length(b->listwintitle,
+                31ul)*aprsdecode_lums.fontxsize;
       ys = linehi;
    }
    else {
-      xw = (unsigned long)useri_conf2int(b->size, 0UL,
-                (long)(linehi*6UL+4UL), (long)mainxs(), 200L);
-      ys = (unsigned long)useri_conf2int(b->size, 1UL,
-                (long)(linehi*5UL+4UL), (long)(useri_mainys()-linehi), 200L);
+      xw = (uint32_t)useri_conf2int(b->size, 0UL,
+                (int32_t)(linehi*6UL+4UL), (int32_t)mainxs(), 200L);
+      ys = (uint32_t)useri_conf2int(b->size, 1UL,
+                (int32_t)(linehi*5UL+4UL),
+                (int32_t)(useri_mainys()-linehi), 200L);
    }
    /*WrInt(xw, 10);WrInt(ys, 10); WrStrLn(" size"); */
-   if (xw>(unsigned long)maptool_xsize) xw = (unsigned long)maptool_xsize;
-   if (ys>(unsigned long)maptool_ysize) ys = (unsigned long)maptool_ysize;
+   if (xw>(uint32_t)maptool_xsize) xw = (uint32_t)maptool_xsize;
+   if (ys>(uint32_t)maptool_ysize) ys = (uint32_t)maptool_ysize;
    i = ys/linehi;
    if (cnt>i) cnt = i;
    m = findmenuid(225UL);
@@ -6503,7 +6938,7 @@ static void makelistwin(struct LISTBUFFER * b)
    m->pullconf = b->xy; /* store extra position for normal size list or mon */
    m->sizeconf = b->size; /* store extra size for normal size list or mon */
    if (ys>(m->image->Len0-1)+1UL) ys = (m->image->Len0-1)+1UL;
-   xs = m->image->Len1-1;
+   xs = (m->image->Len1-1)+1UL;
    m->oldknob = 0UL;
    m->scroll = 0UL;
    m->fullclamp = 1;
@@ -6536,20 +6971,20 @@ static void makelistwin(struct LISTBUFFER * b)
          { /* with */
             struct maptool_PIX * anonym = (anonym16 = m->image,
                 &anonym16->Adr[(xp)*anonym16->Len0+yp]);
-            anonym->r = (unsigned short)mr;
-            anonym->g = (unsigned short)mg;
-            anonym->b = (unsigned short)mb;
+            anonym->r = (uint16_t)mr;
+            anonym->g = (uint16_t)mg;
+            anonym->b = (uint16_t)mb;
          }
          if (xp==tmp0) break;
       } /* end for */
       if (yp==tmp) break;
    } /* end for */
    if (ys>linehi*4UL) {
-      if (m->scry>0L) m->scry += (long)(b->newlines*linehi*256UL);
+      if (m->scry>0L) m->scry += (int32_t)(b->newlines*linehi*256UL);
       b->newlines = 0UL;
       m->scrysize = b->listlinecnt*linehi;
-      yp = (unsigned long)(limscrbar(m->scry, (long)(ys-linehi*4UL),
-                (long)m->scrysize)/256L);
+      yp = (uint32_t)(limscrbar(m->scry, (int32_t)(ys-linehi*4UL),
+                (int32_t)m->scrysize)/256L);
       m->scroll = yp;
       bl = b->listlines; /* shift text vertical */
       while (yp>=linehi && bl) {
@@ -6564,19 +6999,18 @@ static void makelistwin(struct LISTBUFFER * b)
          /* find longest visable line length */
          if (blh) {
             xp = 0UL;
-            while (blh->text[xp]) {
-               ++xp;
-            }
+            while (blh->text[xp]) ++xp;
             if (xp>xch) xch = xp;
             blh = blh->next;
          }
          if (i==tmp) break;
       } /* end for */
-      m->scrxsize = xch*6UL;
-      x0 = (unsigned long)(limscrbar(m->scrx, (long)(xs-linehi*3UL),
-                (long)m->scrxsize)/256L);
-      xp = (x0+5UL)/6UL;
-      x0 = (6UL-x0%6UL)%6UL;
+      m->scrxsize = xch*aprsdecode_lums.fontxsize;
+      x0 = (uint32_t)(limscrbar(m->scrx, (int32_t)(xs-linehi*3UL),
+                (int32_t)m->scrxsize)/256L);
+      xp = (x0+(aprsdecode_lums.fontxsize-1UL))/aprsdecode_lums.fontxsize;
+      x0 = (aprsdecode_lums.fontxsize-x0%aprsdecode_lums.fontxsize)
+                %aprsdecode_lums.fontxsize;
       yp = linehi-yp;
       tmp = cnt;
       lc = 1UL;
@@ -6590,7 +7024,7 @@ static void makelistwin(struct LISTBUFFER * b)
                if (i>=xh) {
                   if (i-xh<1000UL) s[i-xh] = bl->text[i];
                }
-               else if ((unsigned char)bl->text[i]>(unsigned char)'\201') {
+               else if ((uint8_t)bl->text[i]>(uint8_t)'\201') {
                   ++xh; /* do not count color switch */
                }
                if (bl->text[i]==0) break;
@@ -6621,13 +7055,14 @@ static void makelistwin(struct LISTBUFFER * b)
                      col.g = 0U;
                      col.b = 500U;
                   }
-                  drawsquare(m->image, col, (long)(x0+2UL), (long)yp,
-                (long)(x0+9UL), (long)(yp+(linehi-1UL)));
+                  drawsquare(m->image, col, (int32_t)(x0+2UL),
+                (int32_t)yp, (int32_t)(x0+3UL+aprsdecode_lums.fontxsize),
+                 (int32_t)(yp+(linehi-1UL)));
                }
                colorfind(s, 1001ul);
                wrcolor(m->image, s, 1001ul, x0+2UL, 1000UL, 0, &yp);
-               cpinv(m->image, (long)(x0+2UL), (long)yp, (long)xp,
-                (long)bl->startcp, (long)bl->endcp);
+               cpinv(m->image, (int32_t)(x0+2UL), (int32_t)yp,
+                (int32_t)xp, (int32_t)bl->startcp, (int32_t)bl->endcp);
             }
             bl = bl->next;
             yp += linehi;
@@ -6658,9 +7093,9 @@ static void makelistwin(struct LISTBUFFER * b)
             { /* with */
                struct maptool_PIX * anonym2 = (anonym19 = m->image,
                 &anonym19->Adr[(xp)*anonym19->Len0+yp]);
-               anonym2->r = (unsigned short)mr;
-               anonym2->g = (unsigned short)mg;
-               anonym2->b = (unsigned short)mb;
+               anonym2->r = (uint16_t)mr;
+               anonym2->g = (uint16_t)mg;
+               anonym2->b = (uint16_t)mb;
             }
             if (xp==tmp0) break;
          } /* end for */
@@ -6699,9 +7134,9 @@ static void makelistwin(struct LISTBUFFER * b)
                { /* with */
                   struct maptool_PIX * anonym6 = (anonym23 = m->image,
                 &anonym23->Adr[(xp)*anonym23->Len0+yp]);
-                  anonym6->r = (unsigned short)mr;
-                  anonym6->g = (unsigned short)mg;
-                  anonym6->b = (unsigned short)mb;
+                  anonym6->r = (uint16_t)mr;
+                  anonym6->g = (uint16_t)mg;
+                  anonym6->b = (uint16_t)mb;
                }
             }
             if (yp==tmp0) break;
@@ -6736,9 +7171,9 @@ static void makelistwin(struct LISTBUFFER * b)
                { /* with */
                   struct maptool_PIX * anonym10 = (anonym27 = m->image,
                 &anonym27->Adr[(xp)*anonym27->Len0+yp]);
-                  anonym10->r = (unsigned short)mr;
-                  anonym10->g = (unsigned short)mg;
-                  anonym10->b = (unsigned short)mb;
+                  anonym10->r = (uint16_t)mr;
+                  anonym10->g = (uint16_t)mg;
+                  anonym10->b = (uint16_t)mb;
                }
             }
             if (yp==tmp0) break;
@@ -6752,21 +7187,23 @@ static void makelistwin(struct LISTBUFFER * b)
          }
          if (xp==tmp) break;
       } /* end for */
-      scrollbarpos(&x0, &xp, (long)(linehi*2UL), (long)(ys-linehi*2UL),
-                m->scry, (long)m->scrysize);
-      drawbutt(m->image, (long)(xs-linehi), (long)x0, (long)linehi,
-                (long)xp);
-      scrollbarpos(&x0, &xp, (long)linehi, (long)(xs-linehi*2UL), m->scrx,
-                (long)m->scrxsize);
-      drawbutt(m->image, (long)x0, 0L, (long)xp, (long)linehi);
-      drawarrow(m->image, (long)(linehi/2UL), (long)(linehi/2UL+1UL),
-                (long)linehi, 'W');
-      drawarrow(m->image, (long)((xs-linehi*2UL)+linehi/2UL),
-                (long)(linehi/2UL+1UL), (long)linehi, 'E');
-      drawarrow(m->image, (long)((xs-linehi/2UL)-1UL),
-                (long)(linehi+linehi/2UL+1UL), (long)linehi, 'N');
-      drawarrow(m->image, (long)((xs-linehi/2UL)-1UL),
-                (long)(((ys-linehi)-linehi/2UL)-1UL), (long)linehi, 'S');
+      scrollbarpos(&x0, &xp, (int32_t)(linehi*2UL),
+                (int32_t)(ys-linehi*2UL), m->scry, (int32_t)m->scrysize);
+      drawbutt(m->image, (int32_t)(xs-linehi), (int32_t)x0,
+                (int32_t)linehi, (int32_t)xp);
+      scrollbarpos(&x0, &xp, (int32_t)linehi, (int32_t)(xs-linehi*2UL),
+                m->scrx, (int32_t)m->scrxsize);
+      drawbutt(m->image, (int32_t)x0, 0L, (int32_t)xp,
+                (int32_t)linehi);
+      drawarrow(m->image, (int32_t)(linehi/2UL),
+                (int32_t)(linehi/2UL+1UL), (int32_t)linehi, 'W');
+      drawarrow(m->image, (int32_t)((xs-linehi*2UL)+linehi/2UL),
+                (int32_t)(linehi/2UL+1UL), (int32_t)linehi, 'E');
+      drawarrow(m->image, (int32_t)((xs-linehi/2UL)-1UL),
+                (int32_t)(linehi+linehi/2UL+1UL), (int32_t)linehi, 'N');
+      drawarrow(m->image, (int32_t)((xs-linehi/2UL)-1UL),
+                (int32_t)(((ys-linehi)-linehi/2UL)-1UL), (int32_t)linehi,
+                 'S');
    }
    else {
       tmp = ys-1UL;
@@ -6808,23 +7245,23 @@ static void makelistwin(struct LISTBUFFER * b)
          if (xp==tmp) break;
       } /* end for */
    }
-   drawclosewin(m->image, (long)((xs-linehi/2UL)-1UL),
-                (long)((ys-linehi/2UL)-1UL), (long)linehi);
+   drawclosewin(m->image, (int32_t)((xs-linehi/2UL)-1UL),
+                (int32_t)((ys-linehi/2UL)-1UL), (int32_t)linehi);
    if (isicon=='M') {
-      drawnormal(m->image, (long)(((xs-linehi)-linehi/2UL)-1UL),
-                (long)((ys-linehi/2UL)-1UL), (long)linehi);
+      drawnormal(m->image, (int32_t)(((xs-linehi)-linehi/2UL)-1UL),
+                (int32_t)((ys-linehi/2UL)-1UL), (int32_t)linehi);
    }
    else {
-      drawmaximize(m->image, (long)(((xs-linehi)-linehi/2UL)-1UL),
-                (long)((ys-linehi/2UL)-1UL), (long)linehi);
+      drawmaximize(m->image, (int32_t)(((xs-linehi)-linehi/2UL)-1UL),
+                (int32_t)((ys-linehi/2UL)-1UL), (int32_t)linehi);
    }
    if (isicon=='I') {
-      drawnormal(m->image, (long)(((xs-linehi*2UL)-linehi/2UL)-1UL),
-                (long)((ys-linehi/2UL)-1UL), (long)linehi);
+      drawnormal(m->image, (int32_t)(((xs-linehi*2UL)-linehi/2UL)-1UL),
+                (int32_t)((ys-linehi/2UL)-1UL), (int32_t)linehi);
    }
    else {
-      drawminimize(m->image, (long)(((xs-linehi*2UL)-linehi/2UL)-1UL),
-                (long)(ys-linehi/2UL), (long)linehi);
+      drawminimize(m->image, (int32_t)(((xs-linehi*2UL)-linehi/2UL)-1UL),
+                (int32_t)(ys-linehi/2UL), (int32_t)linehi);
    }
    /*drawclosewin(m^.image, linehi DIV 2-1, ys-linehi DIV 2-1, linehi); */
    /*drawmaximize(m^.image, linehi DIV 2-1, ys-linehi DIV 2-1, linehi); */
@@ -6842,11 +7279,11 @@ static void makelistwin(struct LISTBUFFER * b)
       }
       wrcolor(m->image, s, 1001ul, linehi, 700UL, 0, &i);
       aprsstr_Assign(s, 1001ul, b->listwintitle, 31ul);
-      aprsstr_IntToStr((long)b->listlinecnt, 0UL, s1, 1001ul);
+      aprsstr_IntToStr((int32_t)b->listlinecnt, 0UL, s1, 1001ul);
       aprsstr_Append(s, 1001ul, " (", 3ul);
       aprsstr_Append(s, 1001ul, s1, 1001ul);
       aprsstr_Append(s, 1001ul, ")", 2ul);
-      lc = aprsstr_Length(s, 1001ul)*6UL;
+      lc = aprsstr_Length(s, 1001ul)*aprsdecode_lums.fontxsize;
       if (xs>lc+linehi*6UL) {
          wrcolor(m->image, s, 1001ul, (xs-lc)/2UL, 700UL, 0, &i);
       }
@@ -6855,16 +7292,14 @@ static void makelistwin(struct LISTBUFFER * b)
    m->oldknob = oks;
    m->wid = 225UL;
    m->pullyknob = 2147483647UL;
-   if (xw<(unsigned long)maptool_xsize) {
-      xp = ((unsigned long)maptool_xsize-xw)/2UL;
-   }
+   if (xw<(uint32_t)maptool_xsize) xp = ((uint32_t)maptool_xsize-xw)/2UL;
    else xp = 0UL;
    if (aprsdecode_lums.headmenuy) yp = aprsdecode_lums.fontysize;
    else yp = 0UL;
    setmenupos(m, xp, yp);
    m->oldsub = ohs;
    if (m->hiknob>0UL && m->hiknob<=i) {
-      if (X2C_IN(m->hiknob,31,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
+      if (X2C_INL(m->hiknob,61,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
       inv(m, m->oldsub, m->hiknob);
    }
 } /* end makelistwin() */
@@ -6881,10 +7316,10 @@ static void closelist(void)
 
 static void limscrbars(pMENU m)
 {
-   m->scrx = limscrbar(m->scrx, (long)(m->xsize-aprsdecode_lums.fontysize*3UL),
-                 (long)m->scrxsize);
-   m->scry = limscrbar(m->scry, (long)(m->ysize-aprsdecode_lums.fontysize*4UL),
-                 (long)m->scrysize);
+   m->scrx = limscrbar(m->scrx, (int32_t)(m->xsize-aprsdecode_lums.fontysize*3UL),
+                 (int32_t)m->scrxsize);
+   m->scry = limscrbar(m->scry, (int32_t)(m->ysize-aprsdecode_lums.fontysize*4UL),
+                 (int32_t)m->scrysize);
 } /* end limscrbars() */
 
 
@@ -6944,18 +7379,18 @@ extern void useri_clrcpmarks(void)
 } /* end clrcpmarks() */
 
 
-static void findtextpos(pMENU m, unsigned long xcl, unsigned long ycl,
-                pLISTLINE * bb, pLISTLINE * bl, unsigned long * xch)
+static void findtextpos(pMENU m, uint32_t xcl, uint32_t ycl,
+                pLISTLINE * bb, pLISTLINE * bl, uint32_t * xch)
 /* find line/col of x/y pixel */
 {
-   long n;
-   n = (long)(((m->ysize-aprsdecode_lums.fontysize)-ycl)+m->scroll);
+   int32_t n;
+   n = (int32_t)(((m->ysize-aprsdecode_lums.fontysize)-ycl)+m->scroll);
    if (n<0L) n = 0L;
-   n = (long)((unsigned long)n/aprsdecode_lums.fontysize);
+   n = (int32_t)((uint32_t)n/aprsdecode_lums.fontysize);
    if (useri_listwin=='L') *bl = listbuffer.listlines;
    else if (useri_listwin=='M') {
       *bl = monbuffer.listlines;
-      n += (long)monbuffer.newlines;
+      n += (int32_t)monbuffer.newlines;
    }
    else *bl = 0;
    *bb = *bl;
@@ -6963,21 +7398,79 @@ static void findtextpos(pMENU m, unsigned long xcl, unsigned long ycl,
       --n;
       *bl = (*bl)->next;
    }
-   n = (long)(xcl+(unsigned long)limscrbar(m->scrx,
-                (long)(m->xsize-aprsdecode_lums.fontysize*3UL),
-                (long)m->scrxsize)/256UL);
+   n = (int32_t)(xcl+(uint32_t)limscrbar(m->scrx,
+                (int32_t)(m->xsize-aprsdecode_lums.fontysize*3UL),
+                (int32_t)m->scrxsize)/256UL);
    if (n<0L) n = 0L;
-   *xch = (unsigned long)n/6UL;
+   *xch = (uint32_t)n/aprsdecode_lums.fontxsize;
 } /* end findtextpos() */
 
 
-static void dolist(pMENU m, unsigned long xcl, unsigned long ycl)
+static void decodelist(char text[], uint32_t text_len,
+                uint32_t time0)
+{
+   char t[1000];
+   char s[1000];
+   uint32_t h;
+   uint32_t j;
+   uint32_t i;
+   char c;
+   char col;
+   i = 0UL;
+   while (i<999UL && text[i]) {
+      t[i] = text[i]; /* textbuffer may not be value parameter because is allocated only till 0C not to HIGH() */
+      ++i;
+   }
+   t[i] = 0;
+   i = 0UL;
+   j = 0UL;
+   for (;;) {
+      /* reconstruct non-ascii */
+      c = t[i];
+      if (c==0) break;
+      if (c=='\371') {
+         ++i;
+         if (t[i]!='<') break;
+         t[j] = 0;
+         for (h = 0UL; h<=1UL; h++) {
+            ++i;
+            c = t[i];
+            if ((uint8_t)c>='0' && (uint8_t)c<='9') {
+               c = (char)((uint32_t)(uint8_t)c-48UL);
+            }
+            else if ((uint8_t)c>='A' && (uint8_t)c<='F') {
+               c = (char)((uint32_t)(uint8_t)c-55UL);
+            }
+            else goto loop_exit;
+            t[j] = (char)((uint32_t)(uint8_t)t[j]*16UL+(uint32_t)
+                (uint8_t)c);
+         } /* end for */
+         ++i;
+         if (t[i]==0) break;
+         ++i;
+         if (t[i]==0) break;
+      }
+      else t[j] = t[i];
+      ++i;
+      ++j;
+   }
+   loop_exit:;
+   t[j] = 0;
+   aprstext_decodelistline(s, 1000ul, t, 1000ul, time0);
+   col = 'm';
+   if (aprsstr_Length(s, 1000ul)>10UL) {
+      useri_textautosize(-3L, 0L, 2UL, 0UL, 'm', s, 1000ul);
+   }
+} /* end decodelist() */
+
+
+static void dolist(pMENU m, uint32_t xcl, uint32_t ycl)
 /* click on list win */
 {
    char isicon;
-   unsigned long xl;
-   unsigned long x0;
-   unsigned long xdiv;
+   uint32_t xl;
+   uint32_t x0;
+   uint32_t xdiv;
    pLISTLINE bb;
    pLISTLINE bl;
    aprsdecode_pOPHIST op;
@@ -6986,20 +7479,20 @@ static void dolist(pMENU m, unsigned long xcl, unsigned long ycl)
    useri_confstr(m->minnormmax, (char *) &isicon, 1u/1u);
    if (isicon!='I' && ycl+aprsdecode_lums.fontysize>m->ysize) {
       /* bottom line */
-      scrollbarpos(&x0, &xl, (long)aprsdecode_lums.fontysize,
-                (long)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
-                (long)m->scrxsize);
+      scrollbarpos(&x0, &xl, (int32_t)aprsdecode_lums.fontysize,
+                (int32_t)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
+                 (int32_t)m->scrxsize);
       if (xcl<=aprsdecode_lums.fontysize) m->scrx = 0L;
       else if (xcl<=x0) {
-         m->scrx += -(long)((m->xsize-aprsdecode_lums.fontysize*3UL)*256UL);
-                /* scroll left winsize */
+         m->scrx += -(int32_t)((m->xsize-aprsdecode_lums.fontysize*3UL)
+                *256UL); /* scroll left winsize */
       }
       else if (xcl<=x0+xl) {
       }
       else if (xcl+aprsdecode_lums.fontysize*2UL<=m->xsize) {
          /* hit scrollbar */
-         m->scrx += (long)((m->xsize-aprsdecode_lums.fontysize*3UL)*256UL);
-                /* scroll right winsize */
+         m->scrx += (int32_t)((m->xsize-aprsdecode_lums.fontysize*3UL)
+                *256UL); /* scroll right winsize */
       }
       else if (xcl+aprsdecode_lums.fontysize<=m->xsize) m->scrx = 8192000L;
    }
@@ -7016,7 +7509,7 @@ static void dolist(pMENU m, unsigned long xcl, unsigned long ycl)
             if (isicon=='I') isicon = 0;
             else isicon = 'I';
          }
-         else if (xcl<=aprsdecode_lums.fontysize+24UL && xcl>aprsdecode_lums.fontysize)
+         else if (xcl<=aprsdecode_lums.fontysize+aprsdecode_lums.fontxsize*4UL && xcl>aprsdecode_lums.fontysize)
                  {
             if (useri_listwin=='M') freelist(&monbuffer, 0UL);
             if (useri_listwin=='L') {
@@ -7031,21 +7524,22 @@ static void dolist(pMENU m, unsigned long xcl, unsigned long ycl)
    }
    else if (xcl+aprsdecode_lums.fontysize>m->xsize) {
       /* right column */
-      scrollbarpos(&x0, &xl, (long)(aprsdecode_lums.fontysize*2UL),
-                (long)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
-                (long)m->scrysize);
+      scrollbarpos(&x0, &xl, (int32_t)(aprsdecode_lums.fontysize*2UL),
+                (int32_t)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
+                 (int32_t)m->scrysize);
       if (ycl+aprsdecode_lums.fontysize*2UL>m->ysize) m->scry = 0L;
       else if (ycl<=aprsdecode_lums.fontysize*2UL) m->scry = 8192000L;
       else if (m->ysize-ycl<x0) {
          /* scroll winsize down */
-         m->scry += -(long)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL);
+         m->scry += -(int32_t)((m->ysize-aprsdecode_lums.fontysize*4UL)
+                *256UL);
       }
       else if (m->ysize-ycl<x0+xl) {
       }
       else {
          /* click on scrollbar */
-         m->scry += (long)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL);
-                /* scroll winsize up */
+         m->scry += (int32_t)((m->ysize-aprsdecode_lums.fontysize*4UL)
+                *256UL); /* scroll winsize up */
       }
    }
    else {
@@ -7069,34 +7563,35 @@ static void dolist(pMENU m, unsigned long xcl, unsigned long ycl)
             }
             aprsdecode_click.cmd = 't';
          }
+         decodelist(bl->text, 501ul, bl->time0);
       }
    }
    useri_refresh = 1;
 } /* end dolist() */
 
 
-static void wrlist(struct LISTBUFFER * b, char s[], unsigned long s_len,
-                const aprsdecode_MONCALL opcall, struct aprspos_POSITION pos,
-                 unsigned long t, char port)
+static void wrlist(struct LISTBUFFER * b, char s[], uint32_t s_len,
+                const aprsdecode_MONCALL opcall, struct aprsstr_POSITION pos,
+                 uint32_t t, char port)
 /* append a line to list window buffer */
 {
    pLISTLINE bl;
-   unsigned long i;
-   unsigned long start;
-   unsigned long blen;
-   unsigned long end;
+   uint32_t i;
+   uint32_t start;
+   uint32_t blen;
+   uint32_t end;
    X2C_PCOPY((void **)&s,s_len);
    end = 0UL;
    while (end<s_len-1 && s[end]) {
       start = end;
       i = start;
-      while (end<=s_len-1 && (unsigned char)s[end]>=' ') {
+      while (end<=s_len-1 && (uint8_t)s[end]>=' ') {
          s[i] = s[end];
          ++i;
          ++end;
       }
       blen = (((sizeof(struct LISTLINE)-500UL)+end)-start)+1UL;
-      osic_alloc((X2C_ADDRESS *) &bl, blen);
+      osic_alloc((char * *) &bl, blen);
       useri_debugmem.req = blen;
       useri_debugmem.mon += blen;
       if (bl==0) {
@@ -7104,7 +7599,7 @@ static void wrlist(struct LISTBUFFER * b, char s[], unsigned long s_len,
          useri_wrheap();
          goto label;
       }
-      memset((X2C_ADDRESS)bl,(char)0,blen);
+      memset((char *)bl,(char)0,blen);
       bl->next = b->listlines;
       bl->len = blen;
       memcpy(bl->call,opcall,9u);
@@ -7128,16 +7623,16 @@ static void wrlist(struct LISTBUFFER * b, char s[], unsigned long s_len,
 } /* end wrlist() */
 
 
-extern void useri_wrstrlist(char s[], unsigned long s_len,
-                aprsdecode_MONCALL opcall, struct aprspos_POSITION pos,
-                unsigned long t)
+extern void useri_wrstrlist(char s[], uint32_t s_len,
+                aprsdecode_MONCALL opcall, struct aprsstr_POSITION pos,
+                uint32_t t)
 {
    wrlist(&listbuffer, s, s_len, opcall, pos, t, 0);
 } /* end wrstrlist() */
 
 
-extern void useri_wrstrmon(char s[], unsigned long s_len,
-                struct aprspos_POSITION pos)
+extern void useri_wrstrmon(char s[], uint32_t s_len,
+                struct aprsstr_POSITION pos)
 {
    char isicon;
    aprsdecode_MONCALL tmp;
@@ -7151,8 +7646,8 @@ extern void useri_wrstrmon(char s[], unsigned long s_len,
 } /* end wrstrmon() */
 
 
-static void startlist(char tit[], unsigned long tit_len, char oneop[],
-                unsigned long oneop_len)
+static void startlist(char tit[], uint32_t tit_len, char oneop[],
+                uint32_t oneop_len)
 {
    X2C_PCOPY((void **)&tit,tit_len);
    X2C_PCOPY((void **)&oneop,oneop_len);
@@ -7189,13 +7684,13 @@ static void startmon(char manual)
 } /* end startmon() */
 
 
-static void setcp(pMENU m, unsigned long x, unsigned long y, char start)
+static void setcp(pMENU m, uint32_t x, uint32_t y, char start)
 /* copy & paste marking */
 {
    pLISTLINE bb;
    pLISTLINE bl;
-   unsigned long in;
-   unsigned long xl;
+   uint32_t in;
+   uint32_t xl;
    findtextpos(m, x, y, &bb, &bl, &xl);
    if (bl) {
       if (start) {
@@ -7272,19 +7767,19 @@ static void setcp(pMENU m, unsigned long x, unsigned long y, char start)
 } /* end setcp() */
 
 
-static char WhatPull(pMENU m, unsigned long x, unsigned long y)
+static char WhatPull(pMENU m, uint32_t x, uint32_t y)
 {
-   unsigned long syl;
-   unsigned long sy0;
-   unsigned long sxl;
-   unsigned long sx0;
+   uint32_t syl;
+   uint32_t sy0;
+   uint32_t sxl;
+   uint32_t sx0;
    if (m->wid==225UL) {
-      scrollbarpos(&sx0, &sxl, (long)aprsdecode_lums.fontysize,
-                (long)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
-                (long)m->scrxsize);
-      scrollbarpos(&sy0, &syl, (long)(aprsdecode_lums.fontysize*2UL),
-                (long)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
-                (long)m->scrysize);
+      scrollbarpos(&sx0, &sxl, (int32_t)aprsdecode_lums.fontysize,
+                (int32_t)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
+                 (int32_t)m->scrxsize);
+      scrollbarpos(&sy0, &syl, (int32_t)(aprsdecode_lums.fontysize*2UL),
+                (int32_t)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
+                 (int32_t)m->scrysize);
       sxl += sx0;
       syl += sy0;
       /*    limscrolls(m); */
@@ -7320,8 +7815,8 @@ static char WhatPull(pMENU m, unsigned long x, unsigned long y)
       }
       if (y>=aprsdecode_lums.fontysize) {
          setcp(m, x, y, 1);
-         cpendx = (long)x;
-         cpendy = (long)y;
+         cpendx = (int32_t)x;
+         cpendy = (int32_t)y;
          return 'C';
       }
       /* c/p */
@@ -7350,16 +7845,16 @@ static char WhatPull(pMENU m, unsigned long x, unsigned long y)
 } /* end WhatPull() */
 
 
-static char Scrollbars(pMENU m, long dx, long dy)
+static char Scrollbars(pMENU m, int32_t dx, int32_t dy)
 {
-   long sy;
-   long sx;
+   int32_t sy;
+   int32_t sx;
    char ok0;
    char isicon;
    /*WrStr(pullmenuwhat); WrInt(dx, 5); WrInt(dy, 5);  WrStrLn(" pmw"); */
    if (pullmenuwhat=='H') {
       if (dx) {
-         m->scrx += dx*(long)((256UL*m->scrxsize)
+         m->scrx += dx*(int32_t)((256UL*m->scrxsize)
                 /(m->xsize-aprsdecode_lums.fontysize*3UL));
          useri_refresh = 1;
       }
@@ -7367,7 +7862,7 @@ static char Scrollbars(pMENU m, long dx, long dy)
    }
    if (pullmenuwhat=='V') {
       if (dy) {
-         m->scry -= dy*(long)((256UL*m->scrysize)
+         m->scry -= dy*(int32_t)((256UL*m->scrysize)
                 /(m->ysize-aprsdecode_lums.fontysize*4UL));
          useri_refresh = 1;
       }
@@ -7377,13 +7872,13 @@ static char Scrollbars(pMENU m, long dx, long dy)
       /* copy & paste */
       cpendx += dx;
       cpendy += dy;
-      setcp(m, (unsigned long)cpendx, (unsigned long)cpendy, 0);
-      if (cpendy+(long)aprsdecode_lums.fontysize>(long)m->ysize) {
+      setcp(m, (uint32_t)cpendx, (uint32_t)cpendy, 0);
+      if (cpendy+(int32_t)aprsdecode_lums.fontysize>(int32_t)m->ysize) {
          /* scroll while cp */
-         m->scry -= (long)(aprsdecode_lums.fontysize*256UL);
+         m->scry -= (int32_t)(aprsdecode_lums.fontysize*256UL);
       }
-      else if (cpendy<=(long)aprsdecode_lums.fontysize) {
-         m->scry += (long)(aprsdecode_lums.fontysize*256UL);
+      else if (cpendy<=(int32_t)aprsdecode_lums.fontysize) {
+         m->scry += (int32_t)(aprsdecode_lums.fontysize*256UL);
       }
       useri_refresh = 1;
       return 1;
@@ -7394,13 +7889,14 @@ static char Scrollbars(pMENU m, long dx, long dy)
       useri_confstr(m->minnormmax, (char *) &isicon, 1u/1u);
       if (isicon!='I' && isicon!='M') {
          /* was normal size */
-         sx = useri_conf2int(m->sizeconf, 0UL, 40L, (long)mainxs(), 200L);
-         sy = useri_conf2int(m->sizeconf, 1UL, 50L, (long)useri_mainys(),
+         sx = useri_conf2int(m->sizeconf, 0UL, 40L, (int32_t)mainxs(),
                 200L);
+         sy = useri_conf2int(m->sizeconf, 1UL, 50L,
+                (int32_t)useri_mainys(), 200L);
       }
       else {
-         sx = (long)m->xsize;
-         sy = (long)m->ysize;
+         sx = (int32_t)m->xsize;
+         sy = (int32_t)m->ysize;
       }
       ok0 = 0;
       if (pullmenuwhat=='S' || pullmenuwhat=='B') {
@@ -7442,10 +7938,10 @@ static char Scrollbars(pMENU m, long dx, long dy)
          }
       }
       if (ok0) {
-         if ((unsigned long)m->sizeconf>0UL) {
+         if ((uint32_t)m->sizeconf>0UL) {
             useri_saveXYtocfg(m->sizeconf, sx, sy);
          }
-         if ((unsigned long)m->minnormmax>0UL) icfg(m->minnormmax, "", 1ul);
+         if ((uint32_t)m->minnormmax>0UL) icfg(m->minnormmax, "", 1ul);
          useri_refresh = 1;
       }
       return 1;
@@ -7468,24 +7964,25 @@ static void listcursmove(pMENU m, char * ch)
                  */
    switch ((unsigned)cc) {
    case '\023':
-      m->scrx += -1536L;
+      m->scrx += -((int32_t)aprsdecode_lums.fontxsize*256L);
       break;
    case '\004':
-      m->scrx += 1536L;
+      m->scrx += (int32_t)aprsdecode_lums.fontxsize*256L;
       break;
    case '\005':
    case '\310':
-      m->scry += (long)(aprsdecode_lums.fontysize*256UL);
+      m->scry += (int32_t)(aprsdecode_lums.fontysize*256UL);
       break;
    case '\030':
    case '\311':
-      m->scry += -(long)(aprsdecode_lums.fontysize*256UL);
+      m->scry += -(int32_t)(aprsdecode_lums.fontysize*256UL);
       break;
    case '\022':
-      m->scry += (long)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL);
+      m->scry += (int32_t)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL);
       break;
    case '\003':
-      m->scry += -(long)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL);
+      m->scry += -(int32_t)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL)
+                ;
       break;
    case '\001':
       m->scrx = 0L;
@@ -7502,18 +7999,18 @@ static void listcursmove(pMENU m, char * ch)
 } /* end listcursmove() */
 
 
-static void listwincursors(pMENU m, unsigned long x, unsigned long y)
+static void listwincursors(pMENU m, uint32_t x, uint32_t y)
 {
-   unsigned long syl;
-   unsigned long sy0;
-   unsigned long sxl;
-   unsigned long sx0;
-   scrollbarpos(&sx0, &sxl, (long)aprsdecode_lums.fontysize,
-                (long)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
-                (long)m->scrxsize);
-   scrollbarpos(&sy0, &syl, (long)(aprsdecode_lums.fontysize*2UL),
-                (long)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
-                (long)m->scrysize);
+   uint32_t syl;
+   uint32_t sy0;
+   uint32_t sxl;
+   uint32_t sx0;
+   scrollbarpos(&sx0, &sxl, (int32_t)aprsdecode_lums.fontysize,
+                (int32_t)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
+                 (int32_t)m->scrxsize);
+   scrollbarpos(&sy0, &syl, (int32_t)(aprsdecode_lums.fontysize*2UL),
+                (int32_t)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
+                 (int32_t)m->scrysize);
    sxl += sx0;
    syl += sy0;
    /*WrInt(sy0, 10); WrInt(syl, 10); WrInt(m^.ysize-y, 10); WrLn; */
@@ -7538,28 +8035,28 @@ static void listwincursors(pMENU m, unsigned long x, unsigned long y)
 static void makepanwin(void)
 {
    pMENU m;
-   unsigned long yp;
-   unsigned long xp;
-   unsigned long ys;
-   unsigned long xs;
-   unsigned long xw;
+   uint32_t yp;
+   uint32_t xp;
+   uint32_t ys;
+   uint32_t xs;
+   uint32_t xw;
    char abo;
-   unsigned long ohs;
-   unsigned long oks;
+   uint32_t ohs;
+   uint32_t oks;
    if (panowin.isicon) {
-      xw = 64UL;
+      xw = 4UL+10UL*aprsdecode_lums.fontxsize;
       ys = aprsdecode_lums.fontysize;
    }
    else {
-      xw = (unsigned long)useri_conf2int(useri_fPANOSIZE, 0UL,
-                (long)(aprsdecode_lums.fontysize*6UL+4UL), (long)mainxs(),
-                200L);
-      ys = (unsigned long)useri_conf2int(useri_fPANOSIZE, 1UL,
-                (long)(aprsdecode_lums.fontysize*5UL+4UL),
-                (long)(useri_mainys()-aprsdecode_lums.fontysize), 100L);
+      xw = (uint32_t)useri_conf2int(useri_fPANOSIZE, 0UL,
+                (int32_t)(aprsdecode_lums.fontysize*6UL+4UL),
+                (int32_t)mainxs(), 200L);
+      ys = (uint32_t)useri_conf2int(useri_fPANOSIZE, 1UL,
+                (int32_t)(aprsdecode_lums.fontysize*5UL+4UL),
+                (int32_t)(useri_mainys()-aprsdecode_lums.fontysize), 100L);
    }
-   if (xw>(unsigned long)maptool_xsize) xw = (unsigned long)maptool_xsize;
-   if (ys>(unsigned long)maptool_ysize) ys = (unsigned long)maptool_ysize;
+   if (xw>(uint32_t)maptool_xsize) xw = (uint32_t)maptool_xsize;
+   if (ys>(uint32_t)maptool_ysize) ys = (uint32_t)maptool_ysize;
    /*WrInt(xw, 10);WrInt(ys, 10); WrStrLn("x y"); */
    m = findmenuid(202UL);
    refrmenu(&m, xw, ys, 1UL, useri_bCOLOR, 1);
@@ -7569,8 +8066,8 @@ static void makepanwin(void)
    /*  m^.minnormmax:=; */
    ys = (m->image->Len0-1)+1UL;
    xs = (m->image->Len1-1)+1UL;
-   panowin.ximg = (long)xs;
-   panowin.yimg = (long)ys;
+   panowin.ximg = (int32_t)xs;
+   panowin.yimg = (int32_t)ys;
    panowin.image = m->image;
    m->sizeconf = useri_fPANOSIZE;
    m->pullconf = useri_fPANOPOS;
@@ -7584,9 +8081,7 @@ static void makepanwin(void)
       panowin.empty = 0;
    }
    m->pullyknob = 2147483647UL;
-   if (xw<(unsigned long)maptool_xsize) {
-      xp = ((unsigned long)maptool_xsize-xw)/2UL;
-   }
+   if (xw<(uint32_t)maptool_xsize) xp = ((uint32_t)maptool_xsize-xw)/2UL;
    else xp = 0UL;
    if (aprsdecode_lums.headmenuy) yp = aprsdecode_lums.fontysize;
    else yp = 0UL;
@@ -7603,7 +8098,7 @@ static void startpano(void)
       if (aprspos_posvalid(aprsdecode_click.markpos)
                 && aprspos_posvalid(aprsdecode_click.measurepos)) {
          panowin.eyealt = useri_conf2int(useri_fANT2, 0UL, -1000000L,
-                1000000L, -1000000L);
+                50000000L, -1000000L);
          if (panowin.eyealt>-1000000L) {
             panowin.eye = aprsdecode_click.markpos;
             panowin.horizon = aprsdecode_click.measurepos;
@@ -7636,33 +8131,33 @@ static void closepano(void)
 } /* end closepano() */
 
 
-static void dopano(pMENU m, unsigned long xcl, unsigned long ycl)
+static void dopano(pMENU m, uint32_t xcl, uint32_t ycl)
 /* click on panorama win */
 {
    char isicon;
-   unsigned long xl;
-   unsigned long x0;
-   unsigned long xdiv;
+   uint32_t xl;
+   uint32_t x0;
+   uint32_t xdiv;
    /*WrInt(xcl, 10); WrInt(ycl, 10); WrStrLn(" dopano"); */
    limscrbars(m);
    /*  confstr(m^.minnormmax, isicon); */
    isicon = 0;
    if (ycl+aprsdecode_lums.fontysize>m->ysize) {
       /* bottom line */
-      scrollbarpos(&x0, &xl, (long)aprsdecode_lums.fontysize,
-                (long)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
-                (long)m->scrxsize);
+      scrollbarpos(&x0, &xl, (int32_t)aprsdecode_lums.fontysize,
+                (int32_t)(m->xsize-aprsdecode_lums.fontysize*2UL), m->scrx,
+                 (int32_t)m->scrxsize);
       if (xcl<=aprsdecode_lums.fontysize) m->scrx = 0L;
       else if (xcl<=x0) {
-         m->scrx += -(long)((m->xsize-aprsdecode_lums.fontysize*3UL)*256UL);
-                /* scroll left winsize */
+         m->scrx += -(int32_t)((m->xsize-aprsdecode_lums.fontysize*3UL)
+                *256UL); /* scroll left winsize */
       }
       else if (xcl<=x0+xl) {
       }
       else if (xcl+aprsdecode_lums.fontysize*2UL<=m->xsize) {
          /* hit scrollbar */
-         m->scrx += (long)((m->xsize-aprsdecode_lums.fontysize*3UL)*256UL);
-                /* scroll right winsize */
+         m->scrx += (int32_t)((m->xsize-aprsdecode_lums.fontysize*3UL)
+                *256UL); /* scroll right winsize */
       }
       else if (xcl+aprsdecode_lums.fontysize<=m->xsize) m->scrx = 8192000L;
    }
@@ -7674,30 +8169,31 @@ static void dopano(pMENU m, unsigned long xcl, unsigned long ycl)
          if (xdiv==1UL) isicon = 'M';
          else if (xdiv==2UL) isicon = 'I';
          else {
-            xcl<=aprsdecode_lums.fontysize+24UL && xcl>aprsdecode_lums.fontysize;
+            xcl<=aprsdecode_lums.fontysize+aprsdecode_lums.fontxsize*4UL && xcl>aprsdecode_lums.fontysize;
          }
-         if ((unsigned long)m->minnormmax>0UL) {
+         if ((uint32_t)m->minnormmax>0UL) {
             icfg(m->minnormmax, (char *) &isicon, 1u/1u);
          }
       }
    }
    else if (xcl+aprsdecode_lums.fontysize>m->xsize) {
       /* right column */
-      scrollbarpos(&x0, &xl, (long)(aprsdecode_lums.fontysize*2UL),
-                (long)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
-                (long)m->scrysize);
+      scrollbarpos(&x0, &xl, (int32_t)(aprsdecode_lums.fontysize*2UL),
+                (int32_t)(m->ysize-aprsdecode_lums.fontysize*2UL), m->scry,
+                 (int32_t)m->scrysize);
       if (ycl+aprsdecode_lums.fontysize*2UL>m->ysize) m->scry = 0L;
       else if (ycl<=aprsdecode_lums.fontysize*2UL) m->scry = 8192000L;
       else if (m->ysize-ycl<x0) {
          /* scroll winsize down */
-         m->scry += -(long)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL);
+         m->scry += -(int32_t)((m->ysize-aprsdecode_lums.fontysize*4UL)
+                *256UL);
       }
       else if (m->ysize-ycl<x0+xl) {
       }
       else {
          /* click on scrollbar */
-         m->scry += (long)((m->ysize-aprsdecode_lums.fontysize*4UL)*256UL);
-                /* scroll winsize up */
+         m->scry += (int32_t)((m->ysize-aprsdecode_lums.fontysize*4UL)
+                *256UL); /* scroll winsize up */
       }
    }
    /* click on text */
@@ -7721,7 +8217,10 @@ static void escmenus(void)
                 100L);
    aprsdecode_lums.moving = 0;
    aprsdecode_click.withradio = 0;
+   aprsdecode_click.chkmaps = 0;
    aprsdecode_click.onesymbol.tab = 0;
+   aprsdecode_click.abort0 = 1;
+   useri_configbool(useri_fGEOPROFIL, 0);
    if (panowin.on) closepano();
 } /* end escmenus() */
 
@@ -7730,14 +8229,14 @@ static void copytoed(void)
 {
    char s[1000];
    clreditline();
-   useri_confstr((unsigned char)configedit, s, 1000ul);
+   useri_confstr((uint8_t)configedit, s, 1000ul);
    icfg(useri_fEDITLINE, s, 1000ul);
    if (s[0U]) useri_copypaste(s, 1000ul);
    useri_refresh = 1;
 } /* end copytoed() */
 
 
-static void filesetup(unsigned long knob, unsigned long sub)
+static void filesetup(uint32_t knob, uint32_t sub)
 {
    configs[useri_fEDITLINE].width = 200U;
    if (knob==3UL) {
@@ -7758,47 +8257,21 @@ static void filesetup(unsigned long knob, unsigned long sub)
 } /* end filesetup() */
 
 
-static void statuscol(maptool_pIMAGE img, long x0, long xwide,
-                struct maptool_PIX c)
+static void knobcol(maptool_pIMAGE img, int32_t x0, int32_t y00,
+                int32_t xs, int32_t ys, struct maptool_PIX c)
 {
-   long y;
-   long x;
+   int32_t y;
+   int32_t x;
    struct maptool_PIX col;
-   long tmp;
-   long tmp0;
-   tmp = (long)aprsdecode_lums.fontysize-2L;
-   y = 1L;
-   if (y<=tmp) for (;; y++) {
-      tmp0 = xwide;
-      x = -xwide;
-      if (x<=tmp0) for (;; x++) {
-         col = img->Adr[(x0+x)*img->Len0+y];
-         col.r += c.r;
-         col.g += c.g;
-         col.b += c.b;
-         img->Adr[(x0+x)*img->Len0+y] = col;
-         if (x==tmp0) break;
-      } /* end for */
-      if (y==tmp) break;
-   } /* end for */
-} /* end statuscol() */
-
-
-static void knobcol(maptool_pIMAGE img, long x0, long y00, long xs, long ys,
-                struct maptool_PIX c)
-{
-   long y;
-   long x;
-   struct maptool_PIX col;
-   long tmp;
-   long tmp0;
+   int32_t tmp;
+   int32_t tmp0;
    tmp = (y00+ys)-1L;
    y = y00;
    if (y<=tmp) for (;; y++) {
       tmp0 = (x0+xs)-1L;
       x = x0;
       if (x<=tmp0) for (;; x++) {
-         if (x<=(long)(img->Len1-1) && y<=(long)(img->Len0-1)) {
+         if (x<=(int32_t)(img->Len1-1) && y<=(int32_t)(img->Len0-1)) {
             col = img->Adr[(x)*img->Len0+y];
             col.r += c.r;
             col.g += c.g;
@@ -7811,30 +8284,34 @@ static void knobcol(maptool_pIMAGE img, long x0, long y00, long xs, long ys,
    } /* end for */
 } /* end knobcol() */
 
-typedef unsigned long sCONFSET[5];
+typedef uint32_t sCONFSET[5];
 
-static sCONFSET _cnst0 = {0x00000000UL,0x00000000UL,0x0100BE80UL,
-                0x0F000000UL,0x00780000UL};
+static sCONFSET _cnst2 = {0x00000000UL,0x00000000UL,0x0402FA00UL,
+                0x3C000000UL,0x01E00000UL};
 
-static void configman(unsigned long button, char * keycmd)
+static void configman(uint32_t button, char * keycmd)
 {
    char s1[1001];
    char s[1001];
    if (button==1UL) configedit = 0UL;
    else {
       useri_confstr(useri_fEDITLINE, s, 1001ul);
-      useri_confstr((unsigned char)configedit, s1, 1001ul);
+      useri_confstr((uint8_t)configedit, s1, 1001ul);
       if (!aprsstr_StrCmp(s, 1001ul, s1, 1001ul)) {
          configs[configedit].updated = 1;
       }
-      useri_AddConfLine((unsigned char)configedit, 1U, s, 1001ul);
-      if ((unsigned char)configedit==useri_fFONTSIZE) maptool_loadfont();
+      useri_AddConfLine((uint8_t)configedit, 1U, s, 1001ul);
+      if ((uint8_t)configedit==useri_fFONTSIZE) {
+         maptool_loadfont();
+         useri_killallmenus();
+         useri_say(maptool_fontloadmsg, 71ul, 6UL, 'b');
+      }
       /*    IF VAL(CONFSET, configedit) IN sCONFSET{fFONTSIZE, fANT1, fANT2,
                 fANT3, fFRESNELL,fGEOBRIGHTNESS, fGEOCONTRAST, fARROW,fKMH,
                 fKMHTIME,fTEMP,fWINDSYM,fRULER,fALTMIN,fCOLMAPTEXT,
                 fCOLOBJTEXT, fCOLMENUTEXT, fCOLMENUBACK, fCOLMARK1,
                 fCOLMARK2} */
-      if (X2C_INL((long)configedit,154,_cnst0)) *keycmd = ' ';
+      if (X2C_INL((int32_t)configedit,156,_cnst2)) *keycmd = ' ';
       if (configs[configedit].typ<useri_cLIST) configedit = 0UL;
    }
    useri_killmenuid(229UL);
@@ -7844,10 +8321,10 @@ static void configman(unsigned long button, char * keycmd)
 } /* end configman() */
 
 
-extern char useri_gpsalt(unsigned char a)
+extern char useri_gpsalt(uint8_t a)
 {
    char h[100];
-   useri_confstr(a, h, 100ul);
+   useri_conf2str(a, 0UL, 1UL, 1, h, 100ul);
    return aprsstr_InStr(h, 100ul, "A", 2ul)>=0L || aprsstr_InStr(h, 100ul, "a\
 ", 2ul)>=0L;
 } /* end gpsalt() */
@@ -7859,7 +8336,7 @@ static void dogeoprofil(pMENU m)
 {
    char h[100];
    char s[100];
-   long nn;
+   int32_t nn;
    float rv;
    struct maptool_PIX c;
    m->oldknob = 0UL;
@@ -7898,7 +8375,7 @@ static void dogeoprofil(pMENU m)
    aprsstr_Append(s, 100ul, "] MHz", 6ul);
    addline(m, s, 100ul, "\321", 2ul, 8520UL);
    strncpy(s,"Antenna 3   [",100u);
-   nn = useri_conf2int(useri_fANT3, 0UL, -1000000L, 100000L, -1000000L);
+   nn = useri_conf2int(useri_fANT3, 0UL, -1000000L, 50000000L, -1000000L);
    if (nn!=-1000000L) {
       aprsstr_IntToStr(nn, 1UL, h, 100ul);
       aprsstr_Append(s, 100ul, h, 100ul);
@@ -7906,7 +8383,7 @@ static void dogeoprofil(pMENU m)
    aprsstr_Append(s, 100ul, "] m", 4ul);
    addline(m, s, 100ul, "\321", 2ul, 8525UL);
    strncpy(s,"Antenna 2   [",100u);
-   nn = useri_conf2int(useri_fANT2, 0UL, -1000000L, 100000L, -1000000L);
+   nn = useri_conf2int(useri_fANT2, 0UL, -1000000L, 50000000L, -1000000L);
    if (nn!=-1000000L) {
       aprsstr_IntToStr(nn, 1UL, h, 100ul);
       aprsstr_Append(s, 100ul, h, 100ul);
@@ -7914,7 +8391,7 @@ static void dogeoprofil(pMENU m)
    aprsstr_Append(s, 100ul, "] m", 4ul);
    addline(m, s, 100ul, "\321", 2ul, 8527UL);
    strncpy(s,"Antenna 1   [",100u);
-   nn = useri_conf2int(useri_fANT1, 0UL, -1000000L, 100000L, -1000000L);
+   nn = useri_conf2int(useri_fANT1, 0UL, -1000000L, 50000000L, -1000000L);
    if (nn!=-1000000L) {
       aprsstr_IntToStr(nn, 1UL, h, 100ul);
       aprsstr_Append(s, 100ul, h, 100ul);
@@ -7923,7 +8400,7 @@ static void dogeoprofil(pMENU m)
    aprsstr_Append(s, 100ul, "] m", 4ul);
    addline(m, s, 100ul, "\321", 2ul, 8529UL);
    strncpy(s,"   | Redraw |  Map On/Off",100u);
-   nn = (long)configs[useri_fSRTMCACHE].on;
+   nn = (int32_t)configs[useri_fSRTMCACHE].on;
    c.r = 0U;
    c.g = 0U;
    c.b = 0U;
@@ -7941,8 +8418,9 @@ static void dogeoprofil(pMENU m)
       c.r = 500U;
    }
    addline(m, s, 100ul, "\022", 2ul, 8535UL);
-   knobcol(m->image, 2L, (long)((m->oldknob-1UL)*m->yknob), 16L,
-                (long)(m->yknob-1UL), c);
+   knobcol(m->image, 2L, (int32_t)((m->oldknob-1UL)*m->yknob),
+                (int32_t)(aprsdecode_lums.fontxsize*3UL-2UL),
+                (int32_t)(m->yknob-1UL), c);
    m->redrawproc = dogeoprofil;
    m->hiknob = 0UL;
    m->notoverdraw = 1;
@@ -7954,26 +8432,27 @@ static void dogeoprofil(pMENU m)
 static void geoprofil(void)
 {
    pMENU m;
-   newmenu(&m, 145UL, aprsdecode_lums.fontysize+7UL, 11UL, useri_bTRANSP);
+   newmenu(&m, aprsdecode_lums.fontxsize*24UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 11UL, useri_bTRANSP);
    dogeoprofil(m);
    m->ysize = m->oldknob*m->yknob;
    m->oldknob = 0UL;
 } /* end geoprofil() */
 
 
-static void coloureditgeo(unsigned long knob, unsigned long sub)
+static void coloureditgeo(uint32_t knob, uint32_t sub)
 {
    configs[useri_fEDITLINE].width = 200U;
-   if (knob==1UL) configedit = 152UL;
-   else if (knob==2UL) configedit = 151UL;
-   else if (knob==3UL) configedit = 124UL;
-   else if (knob==4UL) configedit = 117UL;
-   else if (knob==5UL) configedit = 118UL;
-   else if (knob==6UL) configedit = 119UL;
-   else if (knob==7UL) configedit = 120UL;
-   else if (knob==8UL) configedit = 123UL;
-   else if (knob==9UL) configedit = 122UL;
-   else configedit = 121UL;
+   if (knob==1UL) configedit = 154UL;
+   else if (knob==2UL) configedit = 153UL;
+   else if (knob==3UL) configedit = 126UL;
+   else if (knob==4UL) configedit = 119UL;
+   else if (knob==5UL) configedit = 120UL;
+   else if (knob==6UL) configedit = 121UL;
+   else if (knob==7UL) configedit = 122UL;
+   else if (knob==8UL) configedit = 125UL;
+   else if (knob==9UL) configedit = 124UL;
+   else configedit = 123UL;
    memcpy(configs[useri_fEDITLINE].title,configs[configedit].title,31u);
    copytoed();
    useri_rdlums();
@@ -7991,11 +8470,9 @@ static void docolours(pMENU m)
    addline(m, " Object/Item Text", 18ul, "\316>", 3ul, 8407UL);
    addline(m, " Menus Text", 12ul, "\316>", 3ul, 8410UL);
    addline(m, " Menus Background", 18ul, "\316>", 3ul, 8415UL);
-   /*  addline(m, " Rf Range Marker 1", CMDCOLOURS+">", MINH*84+20); */
-   /*  addline(m, " Rf Range Marker 2", CMDCOLOURS+">", MINH*84+25); */
    addline(m, " Brightness Rfpath", 19ul, "\316", 2ul, 8430UL);
-   /*  addline(m, " Menu transparency", CMDCOLOURS, MINH*84+35); */
-   addonoff(m, "   |Menu transparency", 22ul, "\316", 2ul, 8435UL, 8L,
+   addonoff(m, "   |Menu transparency", 22ul, "\316", 2ul, 8435UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fTRANSP));
    addline(m, " Font Size", 11ul, "\316", 2ul, 8440UL);
    m->redrawproc = docolours;
@@ -8007,23 +8484,23 @@ static void docolours(pMENU m)
 PROCEDURE colours;
 VAR m:pMENU;
 BEGIN
-  newmenu(m, 115, lums.fontysize+7, 9, bTRANSP);
+  newmenu(m, lums.fontxsize*19+4, lums.fontysize+7, 9, bTRANSP);
   docolours(m);
   m^.ysize:=m^.oldknob*m^.yknob+1;
   m^.oldknob:=0;
 END colours;
 */
 
-static void colouredit(unsigned long knob, unsigned long sub)
+static void colouredit(uint32_t knob, uint32_t sub)
 {
    configs[useri_fEDITLINE].width = 200U;
-   if (knob==7UL) configedit = 88UL;
+   if (knob==7UL) configedit = 90UL;
    else if (knob==6UL) {
       if (sub==0UL) configtogg(useri_fTRANSP);
-      else configedit = 54UL;
+      else configedit = 56UL;
    }
-   else if (knob==5UL) configedit = 61UL;
-   else configedit = (147UL+knob)-1UL;
+   else if (knob==5UL) configedit = 63UL;
+   else configedit = (149UL+knob)-1UL;
    memcpy(configs[useri_fEDITLINE].title,configs[configedit].title,31u);
    copytoed();
    useri_rdlums();
@@ -8047,11 +8524,11 @@ static float ARC(float re, float im)
 } /* end ARC() */
 
 
-static void normcol(unsigned long m, unsigned long * r, unsigned long * g,
-                unsigned long * b)
+static void normcol(uint32_t m, uint32_t * r, uint32_t * g,
+                uint32_t * b)
 /* make color tripple to max luma */
 {
-   unsigned long h;
+   uint32_t h;
    h = *r;
    if (*g>h) h = *g;
    if (*b>h) h = *b;
@@ -8063,13 +8540,11 @@ static void normcol(unsigned long m, unsigned long * r, unsigned long * g,
 
 #define useri_CMUL 1000
 
-#define useri_S1 100
-
 #define useri_PI0 3.1415926536
 
 
-static char xytocolor(unsigned long x, unsigned long y, unsigned long * r,
-                unsigned long * g, unsigned long * b, unsigned long * alias)
+static char xytocolor(uint32_t x, uint32_t y, uint32_t * r,
+                uint32_t * g, uint32_t * b, uint32_t * alias)
 {
    float ra;
    float gr;
@@ -8078,8 +8553,9 @@ static char xytocolor(unsigned long x, unsigned long y, unsigned long * r,
    float h;
    float ya;
    float xa;
-   xa = 2.0f*(X2C_DIVR((float)x,100.0f)-0.5f);
-   ya = 2.0f*(X2C_DIVR((float)y,100.0f)-0.5f);
+   ra = (float)(aprsdecode_lums.fontxsize*17UL);
+   xa = 2.0f*(X2C_DIVR((float)x,ra)-0.5f);
+   ya = 2.0f*(X2C_DIVR((float)y,ra)-0.5f);
    ra = osic_sqrt(xa*xa+ya*ya);
    if (ra>1.0f) return 0;
    /* out of circle */
@@ -8118,37 +8594,39 @@ static void docolourchoose(pMENU);
 
 static void docolourchoose(pMENU menu)
 {
-   unsigned long alias;
-   unsigned long min0;
-   unsigned long bo;
-   unsigned long go;
-   unsigned long ro;
-   unsigned long bb;
-   unsigned long gg;
-   unsigned long rr;
-   unsigned long d;
-   unsigned long yo;
-   unsigned long xo;
-   unsigned long yc;
-   unsigned long xc;
-   unsigned long y;
-   unsigned long x;
+   uint32_t colorsz;
+   uint32_t alias;
+   uint32_t min0;
+   uint32_t bo;
+   uint32_t go;
+   uint32_t ro;
+   uint32_t bb;
+   uint32_t gg;
+   uint32_t rr;
+   uint32_t d;
+   uint32_t yo;
+   uint32_t xo;
+   uint32_t yc;
+   uint32_t xc;
+   uint32_t y;
+   uint32_t x;
    struct aprsdecode_COLTYP col;
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0; /* set cursor */
    maptool_pIMAGE anonym1;
    maptool_pIMAGE anonym2;
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    menu->oldknob = 0UL;
    addline(menu, "", 1ul, "\317", 2ul, 8450UL);
-   ro = (unsigned long)useri_conf2int((unsigned char)((147UL+menu->scroll)
-                -1UL), 0UL, 0L, 100L, 0L);
-   go = (unsigned long)useri_conf2int((unsigned char)((147UL+menu->scroll)
-                -1UL), 1UL, 0L, 100L, 0L);
-   bo = (unsigned long)useri_conf2int((unsigned char)((147UL+menu->scroll)
-                -1UL), 2UL, 0L, 100L, 0L);
+   ro = (uint32_t)useri_conf2int((uint8_t)((149UL+menu->scroll)-1UL),
+                0UL, 0L, 100L, 0L);
+   go = (uint32_t)useri_conf2int((uint8_t)((149UL+menu->scroll)-1UL),
+                1UL, 0L, 100L, 0L);
+   bo = (uint32_t)useri_conf2int((uint8_t)((149UL+menu->scroll)-1UL),
+                2UL, 0L, 100L, 0L);
    normcol(1000UL, &ro, &go, &bo);
+   colorsz = 17UL*aprsdecode_lums.fontxsize;
    xo = 0UL;
    yo = 0UL;
    min0 = X2C_max_longcard;
@@ -8161,7 +8639,7 @@ static void docolourchoose(pMENU menu)
          { /* with */
             struct maptool_PIX * anonym = (anonym1 = menu->image,
                 &anonym1->Adr[(x)*anonym1->Len0+y]);
-            if (((y<5UL || y>105UL) || x<5UL) || x>105UL) {
+            if (((y<5UL || y>colorsz+5UL) || x<5UL) || x>colorsz+5UL) {
                anonym->r = 300U;
                anonym->g = 300U;
                anonym->b = 300U;
@@ -8171,16 +8649,17 @@ static void docolourchoose(pMENU menu)
                xc = x-5UL;
                yc = y-5UL;
                if (xytocolor(xc, yc, &rr, &gg, &bb, &alias)) {
-                  d = (unsigned long)(labs((long)rr-(long)ro)+labs((long)
-                gg-(long)go)+labs((long)bb-(long)bo));
+                  d = (uint32_t)(labs((int32_t)rr-(int32_t)ro)
+                +labs((int32_t)gg-(int32_t)go)+labs((int32_t)
+                bb-(int32_t)bo));
                   if (d<min0) {
                      min0 = d; /* search cursor */
                      xo = x;
                      yo = y;
                   }
-                  anonym->r = (unsigned short)((rr*alias)/100UL);
-                  anonym->g = (unsigned short)((gg*alias)/100UL);
-                  anonym->b = (unsigned short)((bb*alias)/100UL);
+                  anonym->r = (uint16_t)((rr*alias)/100UL);
+                  anonym->g = (uint16_t)((gg*alias)/100UL);
+                  anonym->b = (uint16_t)((bb*alias)/100UL);
                   if (!(anonym->g&1)) ++anonym->g;
                }
                else {
@@ -8198,11 +8677,11 @@ static void docolourchoose(pMENU menu)
    else if (xo>=(menu->image->Len1-1)-1UL) xo = (menu->image->Len1-1)-1UL;
    if (yo<1UL) yo = 1UL;
    else if (yo>=(menu->image->Len0-1)-1UL) yo = (menu->image->Len0-1)-1UL;
-   tmp = yo+1UL;
-   y = yo-1UL;
+   tmp = yo+2UL;
+   y = yo-2UL;
    if (y<=tmp) for (;; y++) {
-      tmp0 = xo+1UL;
-      x = xo-1UL;
+      tmp0 = xo+2UL;
+      x = xo-2UL;
       if (x<=tmp0) for (;; x++) {
          { /* with */
             struct maptool_PIX * anonym0 = (anonym2 = menu->image,
@@ -8216,18 +8695,21 @@ static void docolourchoose(pMENU menu)
       if (y==tmp) break;
    } /* end for */
    maptool_Colset(&col, 'W');
-   maptool_drawstri(menu->image, configs[(menu->scroll-1UL)+147UL].title,
-                31ul, 3L, (long)(((menu->image->Len0-1)-5UL)-aprsdecode_lums.fontysize),
+   maptool_drawstri(menu->image, configs[(menu->scroll-1UL)+149UL].title,
+                31ul, 3L, (int32_t)(((menu->image->Len0-1)-5UL)-aprsdecode_lums.fontysize),
                  1000UL, 1UL, col, 0, 0);
    menu->redrawproc = docolourchoose;
    menu->hiknob = 0UL;
 } /* end docolourchoose() */
 
 
-static void colourchoose(unsigned long knob)
+static void colourchoose(uint32_t knob)
 {
    pMENU menu;
-   newmenu(&menu, 110UL, 110UL+aprsdecode_lums.fontysize, 1UL, useri_bCOLOR);
+   uint32_t colorsz;
+   colorsz = 17UL*aprsdecode_lums.fontxsize;
+   newmenu(&menu, colorsz+10UL, colorsz+10UL+aprsdecode_lums.fontysize, 1UL,
+                useri_bCOLOR);
    menu->scroll = knob;
    docolourchoose(menu);
    menu->ysize = menu->oldknob*menu->yknob;
@@ -8235,10 +8717,13 @@ static void colourchoose(unsigned long knob)
 } /* end colourchoose() */
 
 
-static void colourchoosegeo(unsigned long knob)
+static void colourchoosegeo(uint32_t knob)
 {
    pMENU menu;
-   newmenu(&menu, 110UL, 110UL+aprsdecode_lums.fontysize, 1UL, useri_bCOLOR);
+   uint32_t colorsz;
+   colorsz = 17UL*aprsdecode_lums.fontxsize;
+   newmenu(&menu, colorsz+10UL, colorsz+10UL+aprsdecode_lums.fontysize, 1UL,
+                useri_bCOLOR);
    if (knob==1UL) menu->scroll = 6UL;
    else menu->scroll = 5UL;
    docolourchoose(menu);
@@ -8247,25 +8732,26 @@ static void colourchoosegeo(unsigned long knob)
 } /* end colourchoosegeo() */
 
 
-static void setcolour(unsigned long knob, unsigned long cx,
-                unsigned long cy)
+static void setcolour(uint32_t knob, uint32_t cx, uint32_t cy)
 {
-   unsigned long alias;
-   unsigned long b;
-   unsigned long g;
-   unsigned long r;
+   uint32_t alias;
+   uint32_t b;
+   uint32_t g;
+   uint32_t r;
    char h[101];
    char s[101];
+   uint32_t colorsz;
    /*WrInt(knob, 10);WrInt(cx, 10); WrInt(cy, 10); */
+   colorsz = 17UL*aprsdecode_lums.fontxsize;
    if (cx>=5UL) cx -= 5UL;
    else cx = 0UL;
    if (cy>=5UL+aprsdecode_lums.fontysize) {
       cy -= 5UL+aprsdecode_lums.fontysize;
    }
    else cy = 0UL;
-   if (cx>100UL) cx = 100UL;
-   if (cy>100UL) cy = 100UL;
-   if (xytocolor(cx, 100UL-cy, &r, &g, &b, &alias)) {
+   if (cx>colorsz) cx = colorsz;
+   if (cy>colorsz) cy = colorsz;
+   if (xytocolor(cx, colorsz-cy, &r, &g, &b, &alias)) {
       g = g/10UL;
       if (g>100UL) g = 100UL;
       b = b/10UL;
@@ -8279,7 +8765,7 @@ static void setcolour(unsigned long knob, unsigned long cx,
       aprsstr_Append(s, 101ul, " ", 2ul);
       aprsstr_CardToStr(b, 0UL, h, 101ul);
       aprsstr_Append(s, 101ul, h, 101ul);
-      icfg((unsigned char)((147UL+knob)-1UL), s, 101ul);
+      icfg((uint8_t)((149UL+knob)-1UL), s, 101ul);
    }
    useri_rdlums();
    updatemenus();
@@ -8288,33 +8774,47 @@ static void setcolour(unsigned long knob, unsigned long cx,
 /* colour chooser */
 static void netmenu(pMENU);
 
-#define useri_OX2 8
-
 
 static void netmenu(pMENU m)
 {
-   char s[4];
+   char s[100];
    char h[100];
+   uint32_t i;
    m->oldknob = 0UL;
-   addonoff(m, "   |Allow Gate Rf>Net", 22ul, "\270", 2ul, 7445UL, 8L,
+   addonoff(m, "   |Allow Gate Rf>Net", 22ul, "\270", 2ul, 7445UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fALLOWGATE));
-   addonoff(m, "    Allow Tx to Net", 20ul, "\270", 2ul, 7440UL, 8L,
+   addonoff(m, "    Allow Tx to Net", 20ul, "\270", 2ul, 7440UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fALLOWNETTX));
-   addonoff(m, "    Connect Server", 19ul, "\270", 2ul, 7435UL, 8L,
+   addonoff(m, "    Connect Server", 19ul, "\270", 2ul, 7435UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fCONNECT));
    addline(m, " Serverfilter", 14ul, "\270", 2ul, 7430UL);
    addline(m, " Server url", 12ul, "\270", 2ul, 7425UL);
    addline(m, " Passcode", 10ul, "\270", 2ul, 7420UL);
    addline(m, " Netbeacontext", 15ul, "\270", 2ul, 7415UL);
    addline(m, " My Position", 13ul, "\270", 2ul, 7410UL);
-   useri_confstr(useri_fMYSYM, s, 4ul);
+   useri_confstr(useri_fMYSYM, s, 100ul);
    strncpy(h," My Symbol ",100u);
-   aprsstr_Append(h, 100ul, s, 4ul);
+   aprsstr_Append(h, 100ul, s, 100ul);
    addline(m, h, 100ul, "\270>", 3ul, 7405UL);
-   drawsymsquare(m->image, s[0U], s[1U], (long)(m->xsize-20UL),
-                (long)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
+   drawsymsquare(m->image, s[0U], s[1U],
+                (int32_t)(((m->xsize-aprsdecode_lums.symsize/2UL)
+                -aprsdecode_lums.fontxsize)-8UL),
+                (int32_t)((m->oldknob-1UL)*m->yknob+m->yknob/2UL));
+   useri_confstr(useri_fMYCALL, h, 100ul);
+   i = 0UL;
+   s[0] = 0;
+   while (i<=99UL && h[i]) {
+      if ((uint8_t)h[i]<=' ' || (uint8_t)h[i]>='\177') {
+         aprsstr_Append(s, 100ul, "  ", 3ul);
+      }
+      else aprsstr_Append(s, 100ul, (char *) &h[i], 1u/1u);
+      ++i;
+   }
    strncpy(h," My Call ",100u);
-   useri_confappend(useri_fMYCALL, h, 100ul);
+   aprsstr_Append(h, 100ul, s, 100ul);
    addline(m, h, 100ul, "\270", 2ul, 7400UL);
    m->redrawproc = netmenu;
    m->hiknob = 0UL;
@@ -8323,36 +8823,37 @@ static void netmenu(pMENU m)
 
 static void rfmenu(pMENU);
 
-#define useri_OX3 9
-
 
 static void rfmenu(pMENU m)
 {
    m->oldknob = 0UL;
-   /*  addline(m, " Query Keywords", CMDRF, MINH*75+60); */
-   /*  addline(m, " Msg Destination", CMDRF, MINH*75+55); */
-   /*  addline(m, " Msg Path", CMDRF, MINH*75+50); */
    addline(m, " Config Rx Messages", 20ul, "\271>", 3ul, 7550UL);
    addline(m, " Beacons Shift Time", 20ul, "\271", 2ul, 7545UL);
    addline(m, " Beacons + Objects", 19ul, "\271", 2ul, 7540UL);
    addline(m, " Digipeater", 12ul, "\271", 2ul, 7537UL);
-   /*  addonoff(m, "   |Digipeater", CMDRF, MINH*75+47, OX, configon(fDIGI));
-                 */
-   addonoff(m, "   |Monitor Headline", 21ul, "\271", 2ul, 7535UL, 9L,
+   addonoff(m, "   |Monitor Headline", 21ul, "\271", 2ul, 7535UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fWRTICKER));
-   addonoff(m, "   |Call Check", 15ul, "\271", 2ul, 7530UL, 9L,
+   addonoff(m, "   |Call Check", 15ul, "\271", 2ul, 7530UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fMUSTBECALL));
-   addonoff(m, "   |Serial Interface2", 22ul, "\271", 2ul, 7525UL, 9L,
+   addonoff(m, "   |Serial Interface2", 22ul, "\271", 2ul, 7525UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fSERIALTASK2));
-   addonoff(m, "   |Serial Interface1", 22ul, "\271", 2ul, 7520UL, 9L,
+   addonoff(m, "   |Serial Interface1", 22ul, "\271", 2ul, 7520UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fSERIALTASK));
-   addonoff(m, "   |RF-Port 4", 14ul, "\271", 2ul, 7515UL, 9L,
+   addonoff(m, "   |RF-Port 4", 14ul, "\271", 2ul, 7515UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fUDP4));
-   addonoff(m, "   |RF-Port 3", 14ul, "\271", 2ul, 7510UL, 9L,
+   addonoff(m, "   |RF-Port 3", 14ul, "\271", 2ul, 7510UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fUDP3));
-   addonoff(m, "   |RF-Port 2", 14ul, "\271", 2ul, 7505UL, 9L,
+   addonoff(m, "   |RF-Port 2", 14ul, "\271", 2ul, 7505UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fUDP2));
-   addonoff(m, "   |RF-Port 1", 14ul, "\271", 2ul, 7500UL, 9L,
+   addonoff(m, "   |RF-Port 1", 14ul, "\271", 2ul, 7500UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fUDP1));
    m->redrawproc = rfmenu;
    m->hiknob = 0UL;
@@ -8360,12 +8861,12 @@ static void rfmenu(pMENU m)
 } /* end rfmenu() */
 
 
-static void dorfcfg(unsigned long knob, unsigned long sub)
+static void dorfcfg(uint32_t knob, uint32_t sub)
 {
    configs[useri_fEDITLINE].width = 200U;
    if (knob==2UL) {
       strncpy(configs[useri_fEDITLINE].title,"Beacons Time Shift (s)",31u);
-      configedit = 13UL;
+      configedit = 15UL;
    }
    else if (knob==3UL) {
       strncpy(configs[useri_fEDITLINE].title,"Beacons",31u);
@@ -8380,7 +8881,7 @@ static void dorfcfg(unsigned long knob, unsigned long sub)
       if (sub==0UL) configtogg(useri_fWRTICKER);
       else {
          strncpy(configs[useri_fEDITLINE].title,"Calls in Headline",31u);
-         configedit = 105UL;
+         configedit = 107UL;
       }
    }
    else if (knob==6UL) configtogg(useri_fMUSTBECALL);
@@ -8388,42 +8889,42 @@ static void dorfcfg(unsigned long knob, unsigned long sub)
       if (sub==0UL) configtogg(useri_fSERIALTASK2);
       else {
          strncpy(configs[useri_fEDITLINE].title,"Serial Interface2",31u);
-         configedit = 29UL;
+         configedit = 31UL;
       }
    }
    else if (knob==8UL) {
       if (sub==0UL) configtogg(useri_fSERIALTASK);
       else {
          strncpy(configs[useri_fEDITLINE].title,"Serial Interface1",31u);
-         configedit = 28UL;
+         configedit = 30UL;
       }
    }
    else if (knob==9UL) {
       if (sub==0UL) configtogg(useri_fUDP4);
       else {
          strncpy(configs[useri_fEDITLINE].title,"RF-Port 4",31u);
-         configedit = 39UL;
+         configedit = 41UL;
       }
    }
    else if (knob==10UL) {
       if (sub==0UL) configtogg(useri_fUDP3);
       else {
          strncpy(configs[useri_fEDITLINE].title,"RF-Port 3",31u);
-         configedit = 38UL;
+         configedit = 40UL;
       }
    }
    else if (knob==11UL) {
       if (sub==0UL) configtogg(useri_fUDP2);
       else {
          strncpy(configs[useri_fEDITLINE].title,"RF-Port 2",31u);
-         configedit = 37UL;
+         configedit = 39UL;
       }
    }
    else if (knob==12UL) {
       if (sub==0UL) configtogg(useri_fUDP1);
       else {
          strncpy(configs[useri_fEDITLINE].title,"RF-Port 1",31u);
-         configedit = 36UL;
+         configedit = 38UL;
       }
    }
    copytoed();
@@ -8432,8 +8933,6 @@ static void dorfcfg(unsigned long knob, unsigned long sub)
 
 static void domsgmenu(pMENU);
 
-#define useri_OX4 9
-
 
 static void domsgmenu(pMENU m)
 {
@@ -8441,32 +8940,35 @@ static void domsgmenu(pMENU m)
    addline(m, " Query Keywords", 16ul, "\254", 2ul, 8200UL);
    addline(m, " Msg Destination", 17ul, "\254", 2ul, 8205UL);
    addline(m, " Msg Path", 10ul, "\254", 2ul, 8210UL);
-   addonoff(m, "    Msg Popup Window", 21ul, "\254", 2ul, 8215UL, 9L,
+   addonoff(m, "    Msg Popup Window", 21ul, "\254", 2ul, 8215UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fPOPUPMSG));
-   addonoff(m, "    Show all SSID Msg", 22ul, "\254", 2ul, 8220UL, 9L,
+   addonoff(m, "    Show all SSID Msg", 22ul, "\254", 2ul, 8220UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fMSGALLSSID));
-   addonoff(m, "    Show Msg to Myself", 23ul, "\254", 2ul, 8225UL, 9L,
+   addonoff(m, "    Show Msg to Myself", 23ul, "\254", 2ul, 8225UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fPASSSELFMSG));
    m->redrawproc = domsgmenu;
    m->hiknob = 0UL;
 } /* end domsgmenu() */
 
 
-static void domsgcfg(unsigned long knob)
+static void domsgcfg(uint32_t knob)
 {
    configs[useri_fEDITLINE].width = 200U;
    if (knob==1UL) {
       strncpy(configs[useri_fEDITLINE].title,"Query:Action",31u);
-      configedit = 107UL;
+      configedit = 109UL;
    }
    else if (knob==2UL) {
       strncpy(configs[useri_fEDITLINE].title,"Msg Path",31u);
-      configedit = 98UL;
+      configedit = 100UL;
       configs[useri_fEDITLINE].width = 9U;
    }
    else if (knob==3UL) {
       strncpy(configs[useri_fEDITLINE].title,"Msg Path",31u);
-      configedit = 100UL;
+      configedit = 102UL;
    }
    else if (knob==4UL) configtogg(useri_fPOPUPMSG);
    else if (knob==5UL) configtogg(useri_fMSGALLSSID);
@@ -8479,7 +8981,8 @@ static void domsgcfg(unsigned long knob)
 static void msgmenu(void)
 {
    pMENU menu;
-   newmenu(&menu, 115UL, aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*19UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 10UL, useri_bTRANSP);
    domsgmenu(menu);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
@@ -8509,8 +9012,6 @@ static void expandtogg(void)
 
 static void timercfg(pMENU);
 
-#define useri_OX5 7
-
 
 static void timercfg(pMENU m)
 {
@@ -8532,52 +9033,52 @@ static void timercfg(pMENU m)
 } /* end timercfg() */
 
 
-static void dotimers(unsigned long knob)
+static void dotimers(uint32_t knob)
 {
    configs[useri_fEDITLINE].width = 200U;
    if (knob==11UL) {
       strncpy(configs[useri_fEDITLINE].title,"Netbeacon time (s)",31u);
-      configedit = 12UL;
+      configedit = 14UL;
    }
    else if (knob==10UL) {
       strncpy(configs[useri_fEDITLINE].title,"Delay Start Mapload (s)",31u);
-      configedit = 53UL;
+      configedit = 55UL;
    }
    else if (knob==9UL) {
       strncpy(configs[useri_fEDITLINE].title,"Objects in RAM (Min)",31u);
-      configedit = 52UL;
+      configedit = 54UL;
    }
    else if (knob==8UL) {
       strncpy(configs[useri_fEDITLINE].title,"Data in RAM (Min)",31u);
-      configedit = 51UL;
+      configedit = 53UL;
    }
    else if (knob==7UL) {
       strncpy(configs[useri_fEDITLINE].title,"Fullbright time (Min)",31u);
-      configedit = 50UL;
+      configedit = 52UL;
    }
    else if (knob==6UL) {
       strncpy(configs[useri_fEDITLINE].title,"Fade out time (Min)",31u);
-      configedit = 49UL;
+      configedit = 51UL;
    }
    else if (knob==5UL) {
       strncpy(configs[useri_fEDITLINE].title,"Show km/h (s)",31u);
-      configedit = 74UL;
+      configedit = 76UL;
    }
    else if (knob==4UL) {
       strncpy(configs[useri_fEDITLINE].title,"Dupes lookback (Min)",31u);
-      configedit = 70UL;
+      configedit = 72UL;
    }
    else if (knob==3UL) {
       strncpy(configs[useri_fEDITLINE].title,"Animation Speed",31u);
-      configedit = 82UL;
+      configedit = 84UL;
    }
    else if (knob==2UL) {
       strncpy(configs[useri_fEDITLINE].title,"Nomove skip delay",31u);
-      configedit = 83UL;
+      configedit = 85UL;
    }
    else if (knob==1UL) {
       strncpy(configs[useri_fEDITLINE].title,"Local time (+-h)",31u);
-      configedit = 106UL;
+      configedit = 108UL;
    }
    copytoed();
    updatemenus();
@@ -8585,34 +9086,36 @@ static void dotimers(unsigned long knob)
 
 static void mapcfg(pMENU);
 
-#define useri_OX6 7
-
 
 static void mapcfg(pMENU m)
 {
    m->oldknob = 0UL;
-   /*  addline(m, " Colours", CMDDOMAP+">", MINH*78+2); */
-   /*  addline(m, " Menu transparency", CMDDOMAP, MINH*78+5); */
-   /*  addline(m, " Font Size", CMDDOMAP, MINH*78+7); */
-   /*  addline(m, " Brightness Rfpath", CMDDOMAP, MINH*78+10); */
    addline(m, " Reset to Default", 18ul, "\014", 2ul, 7810UL);
    addline(m, " Brightness notmover", 21ul, "\274", 2ul, 7815UL);
    addline(m, " Show Altitude min m", 21ul, "\274", 2ul, 7820UL);
-   addonoff(m, "   |km/h text", 14ul, "\274", 2ul, 7825UL, 7L,
+   addonoff(m, "   |km/h text", 14ul, "\274", 2ul, 7825UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fKMH));
-   addonoff(m, "   |Load Map Program", 21ul, "\274", 2ul, 7850UL, 7L,
+   addonoff(m, "   |Load Map Program", 21ul, "\274", 2ul, 7850UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fGETMAPS));
-   addonoff(m, "    Show Temp", 14ul, "\274", 2ul, 7830UL, 7L,
+   addonoff(m, "    Show Temp", 14ul, "\274", 2ul, 7830UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fTEMP));
-   addonoff(m, "    Show Windvane", 18ul, "\274", 2ul, 7835UL, 7L,
+   addonoff(m, "    Show Windvane", 18ul, "\274", 2ul, 7835UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fWINDSYM));
-   addonoff(m, "    Show Course Arrow", 22ul, "\274", 2ul, 7840UL, 7L,
+   addonoff(m, "    Show Course Arrow", 22ul, "\274", 2ul, 7840UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fARROW));
-   addonoff(m, "    Show Scaler", 16ul, "\274", 2ul, 7845UL, 7L,
+   addonoff(m, "    Show Scaler", 16ul, "\274", 2ul, 7845UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fRULER));
-   addonoff(m, "    Trackfilter", 16ul, "\274", 2ul, 7855UL, 7L,
+   addonoff(m, "    Trackfilter", 16ul, "\274", 2ul, 7855UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fTRACKFILT));
-   addonoff(m, "   |Show Loc of Mouse", 22ul, "\274", 2ul, 7860UL, 7L,
+   addonoff(m, "   |Show Loc of Mouse", 22ul, "\274", 2ul, 7860UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fMOUSELOC));
    m->redrawproc = mapcfg;
    m->hiknob = 0UL;
@@ -8629,64 +9132,38 @@ extern void useri_resetimgparms(void)
    aprsdecode_lums.headmenuy = 1;
    aprsdecode_lums.errorstep = 0;
    aprsdecode_lums.moving = 0;
-   aprsdecode_posinval(&aprsdecode_click.markpos);
-   aprsdecode_posinval(&aprsdecode_click.measurepos);
-   aprsdecode_posinval(&aprsdecode_click.squerpos0);
+   aprsstr_posinval(&aprsdecode_click.markpos);
+   aprsstr_posinval(&aprsdecode_click.measurepos);
+   aprsstr_posinval(&aprsdecode_click.squerpos0);
+   aprsstr_posinval(&aprsdecode_click.squerspos0);
    aprsdecode_click.waysum = 0.0f;
    useri_say("Reset most Image/Mouse Parameters to Default", 45ul, 4UL, 'b');
 } /* end resetimgparms() */
 
 
-static void domap(unsigned long knob, unsigned long sub)
+static void domap(uint32_t knob, uint32_t sub)
 {
    configs[useri_fEDITLINE].width = 200U;
-   /*
-     IF knob=RESETTODEFAULT THEN
-       configs[fEDITLINE].title:="Menu transparency";
-       configedit:=ORD(fTRANSP);
-     ELSIF knob=3 THEN
-       configs[fEDITLINE].title:="Font Size";
-       configedit:=ORD(fFONTSIZE);
-     ELSIF knob=4 THEN
-       configs[fEDITLINE].title:="Brightness Rfpath";
-       configedit:=ORD(fLRF);
-   */
-   /*
-     IF knob=RESETTODEFAULT THEN
-       initconfig1;
-       rdlums;
-       Setmap(0);
-       escmenus;
-       lums.headmenuy:=TRUE;
-       lums.errorstep:=FALSE;
-       lums.moving:=FALSE;
-       posinval(click.markpos);
-       posinval(click.measurepos);
-       posinval(click.squerpos0);
-       click.waysum:=0.0;
-       say("Reset most Image/Mouse Parameters to Default", 4, "b");
-   
-     ELS*/
    if (knob==2UL) {
       strncpy(configs[useri_fEDITLINE].title,"Brightness notmover",31u);
-      configedit = 62UL;
+      configedit = 64UL;
    }
    else if (knob==3UL) {
       strncpy(configs[useri_fEDITLINE].title,"Show Altitude min m",31u);
-      configedit = 79UL;
+      configedit = 81UL;
    }
    else if (knob==4UL) {
       if (sub==0UL) configtogg(useri_fKMH);
       else {
          strncpy(configs[useri_fEDITLINE].title,"km/h text",31u);
-         configedit = 73UL;
+         configedit = 75UL;
       }
    }
    else if (knob==5UL) {
       if (sub==0UL) maploadtogg();
       else {
          strncpy(configs[useri_fEDITLINE].title,"Start Maploader",31u);
-         configedit = 87UL;
+         configedit = 89UL;
       }
    }
    else if (knob==6UL) configtogg(useri_fTEMP);
@@ -8706,7 +9183,7 @@ static void domap(unsigned long knob, unsigned long sub)
       else {
          strncpy(configs[useri_fEDITLINE].title,"show POIs from zoomlevel",
                 31u);
-         configedit = 67UL;
+         configedit = 69UL;
       }
    }
    copytoed();
@@ -8715,19 +9192,21 @@ static void domap(unsigned long knob, unsigned long sub)
 
 static void mapmove(pMENU);
 
-#define useri_OX7 7
-
 
 static void mapmove(pMENU m)
 {
    m->oldknob = 0UL;
-   addonoff(m, "   |Approx Warn km", 19ul, "\275", 2ul, 7900UL, 7L,
+   addonoff(m, "   |Approx Warn km", 19ul, "\275", 2ul, 7900UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fAPPROXY));
-   addonoff(m, "    Zoom as have Maps", 22ul, "\275", 2ul, 7905UL, 7L,
+   addonoff(m, "    Zoom as have Maps", 22ul, "\275", 2ul, 7905UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fZOOMMISS));
-   addonoff(m, "    Expand Map ", 16ul, "\275", 2ul, 7910UL, 7L,
+   addonoff(m, "    Expand Map ", 16ul, "\275", 2ul, 7910UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fALLOWEXP));
-   addonoff(m, "    Swap map move dir", 22ul, "\275", 2ul, 7915UL, 7L,
+   addonoff(m, "    Swap map move dir", 22ul, "\275", 2ul, 7915UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fINVMOV));
    addline(m, " Bell/Sound", 12ul, "\275>", 3ul, 7917UL);
    addline(m, " Start Window x y", 18ul, "\275", 2ul, 7920UL);
@@ -8742,14 +9221,14 @@ static void mapmove(pMENU m)
 } /* end mapmove() */
 
 
-static void domapmove(unsigned long knob, unsigned long sub)
+static void domapmove(uint32_t knob, uint32_t sub)
 {
    configs[useri_fEDITLINE].width = 200U;
    if (knob==1UL) {
       if (sub==0UL) configtogg(useri_fAPPROXY);
       else {
          strncpy(configs[useri_fEDITLINE].title,"Approximation Warn km",31u);
-         configedit = 135UL;
+         configedit = 137UL;
       }
    }
    else if (knob==2UL) configtogg(useri_fZOOMMISS);
@@ -8761,23 +9240,23 @@ static void domapmove(unsigned long knob, unsigned long sub)
    }
    else if (knob==7UL) {
       strncpy(configs[useri_fEDITLINE].title,"Center Watchcall",31u);
-      configedit = 63UL;
+      configedit = 65UL;
    }
    else if (knob==8UL) {
       strncpy(configs[useri_fEDITLINE].title,"Default Zoom",31u);
-      configedit = 81UL;
+      configedit = 83UL;
    }
    else if (knob==9UL) {
       strncpy(configs[useri_fEDITLINE].title,"Max Zoom",31u);
-      configedit = 85UL;
+      configedit = 87UL;
    }
    else if (knob==10UL) {
       strncpy(configs[useri_fEDITLINE].title,"Map Move Step",31u);
-      configedit = 90UL;
+      configedit = 92UL;
    }
    else if (knob==11UL) {
       strncpy(configs[useri_fEDITLINE].title,"Fine Zoom Step",31u);
-      configedit = 91UL;
+      configedit = 93UL;
    }
    copytoed();
    updatemenus();
@@ -8788,7 +9267,7 @@ static void mapadd(void)
 {
    configs[useri_fEDITLINE].width = 200U;
    strncpy(configs[useri_fEDITLINE].title,"Mapname brightness",31u);
-   configedit = 68UL;
+   configedit = 70UL;
    copytoed();
 } /* end mapadd() */
 
@@ -8797,18 +9276,18 @@ static void mapdir(void)
 {
    configs[useri_fEDITLINE].width = 200U;
    strncpy(configs[useri_fEDITLINE].title,"Map directory path",31u);
-   configedit = 48UL;
+   configedit = 50UL;
    copytoed();
 } /* end mapdir() */
 
 
-static void maincfg(unsigned long knob, char fromstatus)
+static void maincfg(uint32_t knob, char fromstatus)
 {
    pMENU menu;
    if (knob==11UL) potis();
    else {
-      newmenu(&menu, 120UL, aprsdecode_lums.fontysize+3UL, 20UL,
-                useri_bTRANSP);
+      newmenu(&menu, aprsdecode_lums.fontxsize*20UL+4UL,
+                aprsdecode_lums.fontysize+3UL, 20UL, useri_bTRANSP);
       if (fromstatus) setunderbar(menu, useri_xmouse.x-10L);
       if (knob==4UL) {
          addline(menu, " Bad Paths Ports", 17ul, "\265", 2ul, 7301UL);
@@ -8834,44 +9313,44 @@ static void maincfg(unsigned long knob, char fromstatus)
 } /* end maincfg() */
 
 
-static void callfiltsetup(unsigned long knob)
+static void callfiltsetup(uint32_t knob)
 {
    clreditline();
    if (knob==1UL) {
       strncpy(configs[useri_fEDITLINE].title,"Bad Paths Ports",31u);
       configs[useri_fEDITLINE].width = 200U;
-      configedit = 114UL;
+      configedit = 116UL;
       copytoed();
    }
    else if (knob==2UL) {
       strncpy(configs[useri_fEDITLINE].title,"Raw Frame",31u);
       configs[useri_fEDITLINE].width = 50U;
-      configedit = 113UL;
+      configedit = 115UL;
    }
    else if (knob==3UL) {
       strncpy(configs[useri_fEDITLINE].title,"Destination Call",31u);
       configs[useri_fEDITLINE].width = 9U;
-      configedit = 112UL;
+      configedit = 114UL;
    }
    else if (knob==4UL) {
       strncpy(configs[useri_fEDITLINE].title,"Word in Comment",31u);
       configs[useri_fEDITLINE].width = 50U;
-      configedit = 108UL;
+      configedit = 110UL;
    }
    else if (knob==5UL) {
       strncpy(configs[useri_fEDITLINE].title,"Sender of Object",31u);
       configs[useri_fEDITLINE].width = 9U;
-      configedit = 109UL;
+      configedit = 111UL;
    }
    else if (knob==6UL) {
       strncpy(configs[useri_fEDITLINE].title,"Via Igate Call",31u);
       configs[useri_fEDITLINE].width = 9U;
-      configedit = 110UL;
+      configedit = 112UL;
    }
    else if (knob==7UL) {
       strncpy(configs[useri_fEDITLINE].title,"Call of Symbol",31u);
       configs[useri_fEDITLINE].width = 9U;
-      configedit = 111UL;
+      configedit = 113UL;
    }
    useri_refresh = 1;
 } /* end callfiltsetup() */
@@ -8881,25 +9360,14 @@ static void watchcallsetup(void)
 {
    strncpy(configs[useri_fEDITLINE].title,"Watch Call",31u);
    configs[useri_fEDITLINE].width = 10U;
-   configedit = 134UL;
+   configedit = 136UL;
    configs[useri_fEDITLINE].curspos = 0U;
    clreditline();
    useri_refresh = 1;
 } /* end watchcallsetup() */
 
-/*
-PROCEDURE editonesymbol;
-BEGIN
-  configs[fEDITLINE].title:="Symbol Tab+Picture";
-  configs[fEDITLINE].width:=3;
-  configedit:=ORD(fONESYMB);
-  copytoed;
-  updatemenus;
-  rdonesymb(TRUE);
-END editonesymbol;
-*/
 
-static void onlinesetup(unsigned long knob, unsigned long sub)
+static void onlinesetup(uint32_t knob, uint32_t sub)
 {
    configedit = 0UL;
    configs[useri_fEDITLINE].width = 200U;
@@ -8908,7 +9376,7 @@ static void onlinesetup(unsigned long knob, unsigned long sub)
       else {
          strncpy(configs[useri_fEDITLINE].title,"Rf Ports",31u);
          configs[useri_fEDITLINE].width = 4U;
-         configedit = 35UL;
+         configedit = 37UL;
       }
       copytoed();
    }
@@ -8917,25 +9385,25 @@ static void onlinesetup(unsigned long knob, unsigned long sub)
    else if (knob==4UL) {
       strncpy(configs[useri_fEDITLINE].title,"Server Filter",31u);
       configs[useri_fEDITLINE].width = 99U;
-      configedit = 31UL;
+      configedit = 33UL;
       copytoed();
    }
    else if (knob==5UL) {
       strncpy(configs[useri_fEDITLINE].title,"Server URL",31u);
       configs[useri_fEDITLINE].width = 99U;
-      configedit = 30UL;
+      configedit = 32UL;
       copytoed();
    }
    else if (knob==6UL) {
       strncpy(configs[useri_fEDITLINE].title,"Passcode",31u);
       configs[useri_fEDITLINE].width = 99U;
-      configedit = 32UL;
+      configedit = 34UL;
       copytoed();
    }
    else if (knob==7UL) {
       strncpy(configs[useri_fEDITLINE].title,"Netbeacon Text",31u);
       configs[useri_fEDITLINE].width = 99U;
-      configedit = 10UL;
+      configedit = 12UL;
       copytoed();
    }
    else if (knob==8UL) {
@@ -8962,10 +9430,11 @@ static void onlinesetup(unsigned long knob, unsigned long sub)
 } /* end onlinesetup() */
 
 
-static void configdel(unsigned long knob)
+static void configdel(uint32_t knob)
 {
    pMENU menu;
-   newmenu(&menu, 42UL, aprsdecode_lums.fontysize+7UL, 2UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*7UL,
+                aprsdecode_lums.fontysize+7UL, 2UL, useri_bTRANSP);
    menu->scroll = knob-2UL;
    addline(menu, "On/Off", 7ul, "\267", 2ul, 7695UL);
    addline(menu, "Edit", 5ul, "\267", 2ul, 7696UL);
@@ -8974,18 +9443,17 @@ static void configdel(unsigned long knob)
 } /* end configdel() */
 
 
-static void testbeep(unsigned char v)
+static void testbeep(uint8_t v)
 {
    if (useri_configon(v)) {
-      xosi_beep(100L, (unsigned long)useri_conf2int(v, 0UL, 20L, 8000L,
-                1000L), (unsigned long)useri_conf2int(v, 1UL, 0L, 5000L,
-                250L));
+      xosi_beep(100L, (uint32_t)useri_conf2int(v, 0UL, 20L, 8000L, 1000L),
+                (uint32_t)useri_conf2int(v, 1UL, 0L, 5000L, 250L));
       useri_say("Testing beep now", 17ul, 1UL, 'b');
    }
 } /* end testbeep() */
 
 
-static void docfgbeep(unsigned long knob, unsigned long sub)
+static void docfgbeep(uint32_t knob, uint32_t sub)
 {
    configs[useri_fEDITLINE].width = 200U;
    if (knob==1UL) {
@@ -8993,7 +9461,7 @@ static void docfgbeep(unsigned long knob, unsigned long sub)
       else {
          strncpy(configs[useri_fEDITLINE].title,"Beep far/near Hz ms Hz ms",
                 31u);
-         configedit = 127UL;
+         configedit = 129UL;
       }
       testbeep(useri_fBEEPPROX);
    }
@@ -9001,7 +9469,7 @@ static void docfgbeep(unsigned long knob, unsigned long sub)
       if (sub==0UL) configtogg(useri_fBEEPWATCH);
       else {
          strncpy(configs[useri_fEDITLINE].title,"Watchcall Beep Hz ms",31u);
-         configedit = 128UL;
+         configedit = 130UL;
       }
       testbeep(useri_fBEEPWATCH);
    }
@@ -9010,7 +9478,7 @@ static void docfgbeep(unsigned long knob, unsigned long sub)
       else {
          strncpy(configs[useri_fEDITLINE].title,"Message Beep rx/ack Hz ms Hz\
  ms",31u);
-         configedit = 129UL;
+         configedit = 131UL;
       }
       testbeep(useri_fBEEPMSG);
    }
@@ -9020,17 +9488,18 @@ static void docfgbeep(unsigned long knob, unsigned long sub)
 
 static void cfgbeep(pMENU);
 
-#define useri_OX8 7
-
 
 static void cfgbeep(pMENU m)
 {
    m->oldknob = 0UL;
-   addonoff(m, "   |Approxy Beep", 17ul, "\304", 2ul, 8010UL, 7L,
+   addonoff(m, "   |Approxy Beep", 17ul, "\304", 2ul, 8010UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fBEEPPROX));
-   addonoff(m, "   |Watchcall Beep", 19ul, "\304", 2ul, 8015UL, 7L,
+   addonoff(m, "   |Watchcall Beep", 19ul, "\304", 2ul, 8015UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fBEEPWATCH));
-   addonoff(m, "   |Message Beep", 17ul, "\304", 2ul, 8020UL, 7L,
+   addonoff(m, "   |Message Beep", 17ul, "\304", 2ul, 8020UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
                 useri_configon(useri_fBEEPMSG));
    m->redrawproc = cfgbeep;
    m->ysize = m->oldknob*m->yknob;
@@ -9041,12 +9510,11 @@ static void cfgbeep(pMENU m)
 static void configbeep(void)
 {
    pMENU m;
-   newmenu(&m, 100UL, aprsdecode_lums.fontysize+7UL, 3UL, useri_bTRANSP);
+   newmenu(&m, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 3UL, useri_bTRANSP);
    cfgbeep(m);
    m->oldknob = 0UL;
 } /* end configbeep() */
-
-#define useri_XSIZE2 400
 
 #define useri_YPOS0 240
 
@@ -9057,10 +9525,10 @@ static void configbeep(void)
 static void configeditor(void)
 {
    pMENU m;
-   unsigned long xp;
-   unsigned long i;
-   unsigned long cnt;
-   unsigned long xw;
+   uint32_t xp;
+   uint32_t i;
+   uint32_t cnt;
+   uint32_t xw;
    char ss[201];
    char s[201];
    aprsdecode_FILENAME fn;
@@ -9070,23 +9538,24 @@ static void configeditor(void)
    char more;
    char onof;
    /*test:REAL; */
-   unsigned long ohs;
-   unsigned long hks;
-   unsigned long oks;
+   uint32_t ohs;
+   uint32_t hks;
+   uint32_t oks;
    cnt = 0UL;
    pl = 0;
-   if (configedit<=153UL) pl = configs[configedit].lines;
+   if (configedit<=155UL) pl = configs[configedit].lines;
    ph = pl;
    while (ph) {
       ++cnt;
       ph = ph->next;
    }
    i = useri_mainys()/(aprsdecode_lums.fontysize+5UL);
+   if (i>=60UL) i = 60UL;
    if (i<3UL) i = 1UL;
    else i -= 2UL;
    if (cnt>i) cnt = i;
-   xw = 400UL;
-   if (400UL>(unsigned long)maptool_xsize) xw = (unsigned long)maptool_xsize;
+   xw = aprsdecode_lums.fontxsize*67UL;
+   if (xw>(uint32_t)maptool_xsize) xw = (uint32_t)maptool_xsize;
    m = findmenuid(229UL);
    refrmenu(&m, xw, aprsdecode_lums.fontysize+5UL, cnt+2UL, useri_bCOLOR, 0);
    oks = m->oldknob;
@@ -9104,8 +9573,8 @@ static void configeditor(void)
    /*    IF cnt=1 THEN  AddConfLine(fEDITLINE, FALSE, pl^.line) END;  */
    /*    addline(m, 0C, " ", MINH*72); */
    addline(m, "", 1ul, "\320", 2ul, 7200UL);
-   m->clampkb |= 0x4UL;
-   m->confidx[2U] = 153U;
+   X2C_INCL(m->clampkb,2U,61);
+   m->confidx[2U] = 155U;
    keybknob(m, 2UL, 0, 0UL);
    m->oldknob = 2UL;
    more = configs[configedit].typ>=useri_cLIST;
@@ -9113,13 +9582,13 @@ static void configeditor(void)
    onof = isbool(configs[configedit].typ);
    if (more) strncpy(cmd,"\266>",2u);
    else strncpy(cmd," ",2u);
-   i = xw/6UL;
+   i = xw/aprsdecode_lums.fontxsize;
    while (cnt>0UL) {
       if (onof) strncpy(s,"\346    ",201u);
       else strncpy(s,"\346 ",201u);
       m->scroll = cnt;
       aprsstr_Append(s, 201ul, pl->line, 201ul);
-      if (configedit==134UL) {
+      if (configedit==136UL) {
          aprsstr_Append(s, 201ul, "           ", 12ul);
          s[12U] = 0;
          strncpy(cmd,"\253",2u);
@@ -9157,9 +9626,7 @@ static void configeditor(void)
    m->oldknob = oks;
    m->pullconf = useri_fMENUXYEDIT;
    m->pullyknob = 8UL;
-   if (xw<(unsigned long)maptool_xsize) {
-      xp = ((unsigned long)maptool_xsize-xw)/2UL;
-   }
+   if (xw<(uint32_t)maptool_xsize) xp = ((uint32_t)maptool_xsize-xw)/2UL;
    else xp = 0UL;
    setmenupos(m, xp, 240UL);
    /*
@@ -9169,17 +9636,17 @@ static void configeditor(void)
    */
    m->oldsub = ohs;
    if (m->hiknob>0UL && m->hiknob<=i) {
-      if (X2C_IN(m->hiknob,31,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
+      if (X2C_INL(m->hiknob,61,m->clampkb)) keybknob(m, m->hiknob, 1, 0UL);
       inv(m, m->oldsub, m->hiknob);
    }
 } /* end configeditor() */
 
 
-static void watchdo(unsigned long knob, unsigned long sub)
+static void watchdo(uint32_t knob, uint32_t sub)
 {
    pCONFLINE pl;
-   unsigned char s1;
-   unsigned char s;
+   uint8_t s1;
+   uint8_t s;
    aprsdecode_FILENAME h;
    aprsdecode_FILENAME fn;
    char ok0;
@@ -9189,9 +9656,9 @@ static void watchdo(unsigned long knob, unsigned long sub)
       if (sub!=6UL) dellog = 0UL;
       if (sub>=1UL && sub<=3UL) {
          s = 1U<<sub-1UL;
-         s1 = (unsigned char)pl->active;
+         s1 = (uint8_t)pl->active;
          s = s^s1;
-         pl->active = (unsigned char)s; /* toggle 3 bits */
+         pl->active = (uint8_t)s; /* toggle 3 bits */
       }
       else if (sub==4UL) {
          aprsstr_Assign(fn, 1024ul, pl->line, 201ul);
@@ -9231,13 +9698,12 @@ static void watchdo(unsigned long knob, unsigned long sub)
 
 static void configmain(pMENU);
 
-#define useri_OX9 8
-
 
 static void configmain(pMENU m)
 {
    m->oldknob = 0UL;
-   addonoff(m, "   |Save Config", 16ul, "\264", 2ul, 7000UL, 8L,
+   addonoff(m, "   |Save Config", 16ul, "\264", 2ul, 7000UL,
+                (int32_t)(aprsdecode_lums.fontxsize+4UL),
                 useri_configon(useri_fAUTOSAVE));
    addline(m, " Reload Config", 15ul, "\264", 2ul, 7005UL);
    addline(m, " Watch Calls", 13ul, "\264", 2ul, 7010UL);
@@ -9257,7 +9723,8 @@ static void configmain(pMENU m)
 static void configmenu2(void)
 {
    pMENU menu;
-   newmenu(&menu, 90UL, aprsdecode_lums.fontysize+7UL, 20UL, useri_bTRANSP);
+   newmenu(&menu, aprsdecode_lums.fontxsize*15UL,
+                aprsdecode_lums.fontysize+7UL, 20UL, useri_bTRANSP);
    configmain(menu);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
@@ -9270,29 +9737,110 @@ static void configmenu2(void)
 static void findopl(char folded)
 {
    pMENU menu;
-   /*  IF NOT folded THEN killallmenus END; */
    if (!folded) useri_killmenuid(0UL);
-   newmenu(&menu, 220UL, aprsdecode_lums.fontysize+10UL, 1UL, useri_bCOLOR);
+   newmenu(&menu, aprsdecode_lums.fontxsize*37UL+4UL,
+                aprsdecode_lums.fontysize+10UL, 1UL, useri_bCOLOR);
    addline(menu, "", 1ul, "\245", 2ul, 1990UL);
-   menu->clampkb |= 0x2UL;
+   X2C_INCL(menu->clampkb,1U,61);
    menu->confidx[1U] = 0U;
    clampedline = 0UL;
    keybknob(menu, 1UL, 0, 0UL);
    menu->ysize = menu->oldknob*menu->yknob;
    menu->oldknob = 0UL;
    if (!folded) {
-      menu->x0 = (unsigned long)useri_xmouse.x;
-      menu->y00 = (unsigned long)useri_xmouse.y;
+      menu->x0 = (uint32_t)useri_xmouse.x;
+      menu->y00 = (uint32_t)useri_xmouse.y;
    }
 } /* end findopl() */
+
+
+static uint32_t cntpoifiles(void)
+{
+   uint32_t i;
+   i = 0UL;
+   while (i<=29UL && aprsdecode_poifiles[i].count>0UL) ++i;
+   return i;
+} /* end cntpoifiles() */
+
+static void doshowpoicategory(pMENU);
+
+
+static void doshowpoicategory(pMENU menu)
+{
+   uint32_t oldk;
+   uint32_t olds;
+   uint32_t cnt;
+   uint32_t i;
+   char sc[31];
+   char s[31];
+   uint32_t tmp;
+   cnt = cntpoifiles();
+   if (cnt>0UL) {
+      oldk = menu->oldknob;
+      olds = menu->oldsub;
+      menu->oldknob = 0UL;
+      tmp = cnt-1UL;
+      i = 0UL;
+      if (i<=tmp) for (;; i++) {
+         strncpy(s,"    ",31u);
+         aprsstr_Append(s, 31ul, aprsdecode_poifiles[i].name, 10ul);
+         aprsstr_IntToStr((int32_t)aprsdecode_poifiles[i].count, 1UL, sc,
+                31ul);
+         aprsstr_Append(s, 31ul, "[", 2ul);
+         aprsstr_Append(s, 31ul, sc, 31ul);
+         aprsstr_Append(s, 31ul, "]", 2ul);
+         addonoff(menu, s, 31ul, "\333>", 3ul, 8680UL,
+                (int32_t)(aprsdecode_lums.fontxsize+2UL),
+                aprsdecode_poifiles[i].on);
+         drawsymsquare(menu->image, aprsdecode_poifiles[i].symbol[0UL],
+                aprsdecode_poifiles[i].symbol[1UL],
+                (int32_t)(((menu->xsize-aprsdecode_lums.symsize/2UL)
+                -aprsdecode_lums.fontxsize)-8UL),
+                (int32_t)((menu->oldknob-1UL)*menu->yknob+menu->yknob/2UL))
+                ;
+         if (i==tmp) break;
+      } /* end for */
+      ++cnt;
+      addline(menu, "", 1ul, "\335", 2ul, 8681UL);
+      X2C_INCL(menu->clampkb,cnt,61);
+      menu->confidx[cnt] = 10U;
+      clampedline = 0UL;
+      keybknob(menu, cnt, 0, 0UL);
+      menu->redrawproc = doshowpoicategory;
+      menu->ysize = menu->oldknob*menu->yknob;
+      menu->oldknob = oldk;
+      menu->oldsub = olds;
+   }
+} /* end doshowpoicategory() */
+
+
+static void showpoicategory(char folded)
+{
+   pMENU menu;
+   uint32_t cnt;
+   cnt = cntpoifiles();
+   if (!folded) useri_killallmenus();
+   if (cnt>0UL) {
+      newmenu(&menu, aprsdecode_lums.fontxsize*23UL+4UL,
+                aprsdecode_lums.fontysize+10UL, cnt+1UL, useri_bTRANSP);
+      if (!folded) {
+         menu->x0 = (uint32_t)useri_xmouse.x;
+         menu->y00 = (uint32_t)useri_xmouse.y;
+      }
+      doshowpoicategory(menu);
+      menu->oldknob = 0UL;
+   }
+   else if (!folded) useri_say("No PoiFiles found", 18ul, 4UL, 'e');
+} /* end showpoicategory() */
 
 
 static void fotofn(void)
 {
    pMENU menu;
-   newmenu(&menu, 400UL, aprsdecode_lums.fontysize+7UL, 1UL, useri_bCOLOR);
+   newmenu(&menu, aprsdecode_lums.fontxsize*67UL,
+                aprsdecode_lums.fontysize+7UL, 1UL, useri_bCOLOR);
    addline(menu, "", 1ul, "S", 2ul, 1800UL);
-   menu->clampkb |= 0x2UL;
+   X2C_INCL(menu->clampkb,1U,61);
    menu->confidx[1U] = 6U;
    keybknob(menu, 1UL, 0, 0UL);
    menu->notoverdraw = 1;
@@ -9301,11 +9849,11 @@ static void fotofn(void)
 } /* end fotofn() */
 
 
-static char existslog(char fname[], unsigned long fname_len)
+static char existslog(char fname[], uint32_t fname_len)
 {
    aprsdecode_FILENAME fn;
    aprsdecode_FILENAME fnd;
-   unsigned long t;
+   uint32_t t;
    char existslog_ret;
    X2C_PCOPY((void **)&fname,fname_len);
    aprsstr_Assign(fn, 1024ul, fname, fname_len);
@@ -9340,8 +9888,8 @@ static void importlog(pMENU menu)
    char fn[4096];
    redraw = menu!=0;
    if (!redraw) {
-      newmenu(&menu, 256UL, aprsdecode_lums.fontysize+7UL, 6UL,
-                useri_bCOLOR);
+      newmenu(&menu, aprsdecode_lums.fontxsize*43UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 6UL, useri_bCOLOR);
       dellog = 0UL;
    }
    menu->oldknob = 0UL;
@@ -9375,15 +9923,15 @@ static void importlog(pMENU menu)
                 44ul, "\216", 2ul, 6715UL);
    }
    addline(menu, "", 1ul, "\216", 2ul, 6710UL);
-   menu->clampkb |= 0x8UL;
+   X2C_INCL(menu->clampkb,3U,61);
    menu->confidx[3U] = 3U;
    keybknob(menu, 3UL, 0, 0UL);
    addline(menu, "", 1ul, "\216", 2ul, 6705UL);
-   menu->clampkb |= 0x10UL;
+   X2C_INCL(menu->clampkb,4U,61);
    menu->confidx[4U] = 5U;
    keybknob(menu, 4UL, 0, 0UL);
    addline(menu, "", 1ul, "\216", 2ul, 6700UL);
-   menu->clampkb |= 0x20UL;
+   X2C_INCL(menu->clampkb,5U,61);
    menu->confidx[5U] = 4U;
    keybknob(menu, 5UL, 0, 0UL);
    if (aprsdecode_lums.headmenuy && menu->y00<aprsdecode_lums.fontysize) {
@@ -9407,20 +9955,50 @@ extern void useri_refrlog(void)
 } /* end refrlog() */
 
 
-static float rt(unsigned long t)
+static void statuscol(maptool_pIMAGE img, int32_t x0, int32_t xwide,
+                struct maptool_PIX c)
+{
+   int32_t ym;
+   int32_t y;
+   int32_t x;
+   struct maptool_PIX col;
+   int32_t tmp;
+   int32_t tmp0;
+   ym = (int32_t)(aprsdecode_lums.fontysize-2UL);
+   if (ym>(int32_t)(img->Len0-1)) ym = (int32_t)(img->Len0-1);
+   tmp = ym;
+   y = 1L;
+   if (y<=tmp) for (;; y++) {
+      tmp0 = xwide-2L;
+      x = 1L;
+      if (x<=tmp0) for (;; x++) {
+         col = img->Adr[(x0+x)*img->Len0+y];
+         col.r += c.r;
+         col.g += c.g;
+         col.b += c.b;
+         img->Adr[(x0+x)*img->Len0+y] = col;
+         if (x==tmp0) break;
+      } /* end for */
+      if (y==tmp) break;
+   } /* end for */
+} /* end statuscol() */
+
+
+static float rt(uint32_t t)
 {
    if (t>60UL) t = 60UL;
    return 1.0f-(float)t*1.6666666666667E-2f;
 } /* end rt() */
 
 
-static void statuscoly(maptool_pIMAGE img, long x0, unsigned long tx,
-                unsigned long tr, char on)
+static void statuscoly(maptool_pIMAGE img, int32_t x0, int32_t xw,
+                uint32_t tx, uint32_t tr, char on)
 {
-   long in;
-   long ir;
-   long y;
-   long x;
+   int32_t in;
+   int32_t ir;
+   int32_t ym;
+   int32_t y;
+   int32_t x;
    float v;
    float un;
    float ur;
@@ -9429,7 +10007,8 @@ static void statuscoly(maptool_pIMAGE img, long x0, unsigned long tx,
    struct maptool_PIX ct;
    struct maptool_PIX cn;
    struct maptool_PIX * anonym;
-   long tmp;
+   int32_t tmp;
+   int32_t tmp0;
    if (on) {
       cn.r = 300U;
       cn.g = 0U;
@@ -9454,12 +10033,16 @@ static void statuscoly(maptool_pIMAGE img, long x0, unsigned long tx,
    else un = ur;
    if (un!=0.0f) ur = X2C_DIVR(ur*un,ut+ur);
    v = (float)(aprsdecode_lums.fontysize-1UL);
-   ir = (long)X2C_TRUNCI(ur*v,X2C_min_longint,X2C_max_longint);
-   in = (long)X2C_TRUNCI(un*v,X2C_min_longint,X2C_max_longint);
-   tmp = (long)aprsdecode_lums.fontysize-2L;
+   ir = (int32_t)X2C_TRUNCI(ur*v,X2C_min_longint,X2C_max_longint);
+   in = (int32_t)X2C_TRUNCI(un*v,X2C_min_longint,X2C_max_longint);
+   ym = (int32_t)(aprsdecode_lums.fontysize-2UL);
+   if (ym>(int32_t)(img->Len0-1)) ym = (int32_t)(img->Len0-1);
+   tmp = ym;
    y = 1L;
    if (y<=tmp) for (;; y++) {
-      for (x = -5L; x<=5L; x++) {
+      tmp0 = xw-2L;
+      x = 1L;
+      if (x<=tmp0) for (;; x++) {
          { /* with */
             struct maptool_PIX * anonym = &img->Adr[(x0+x)*img->Len0+y];
             if (y>in) {
@@ -9478,36 +10061,12 @@ static void statuscoly(maptool_pIMAGE img, long x0, unsigned long tx,
                anonym->b += cr.b;
             }
          }
+         if (x==tmp0) break;
       } /* end for */
       if (y==tmp) break;
    } /* end for */
 } /* end statuscoly() */
 
-/*
-PROCEDURE timecolor(t:TIME; VAR c:PIX);
-CONST M=300;
-      T=60;
-BEGIN
-  IF t>T THEN t:=T END;
-  t:=t*(M*2) DIV T;
-  c.b:=0;
-  IF t>M*2 THEN t:=M*2 END;
-  IF t<=M THEN c.r:=t; c.g:=M
-  ELSE c.r:=M; c.g:=M*2-t END
-END timecolor;
-*/
-/*
-PROCEDURE timecolor(t:TIME; VAR c:PIX);
-                (* button background color from time *)
-CONST M=300;
-      T=60;
-BEGIN
-  IF t>T THEN t:=T END;
-  c.r:=t*M DIV T;
-  c.b:=c.r;
-  c.g:=M;
-END timecolor;
-*/
 
 static void tcpstat(void)
 {
@@ -9518,7 +10077,7 @@ static void tcpstat(void)
 } /* end tcpstat() */
 
 
-static void udpstat(unsigned long port)
+static void udpstat(uint32_t port)
 {
    char s[1001];
    s[0U] = 0;
@@ -9526,12 +10085,7 @@ static void udpstat(unsigned long port)
    useri_say(s, 1001ul, 4UL, 'b');
 } /* end udpstat() */
 
-#define useri_XKNOB 13
-
 #define useri_KNOBS 10
-
-#define useri_MAXEXTRALEN 84
-/* dynamic message field width */
 
 #define useri_XKNOBC 5
 /* color field x */
@@ -9542,14 +10096,18 @@ static void statusbar(void)
    pMENU menu;
    char redraw;
    struct maptool_PIX c;
-   unsigned long elen;
-   unsigned long okn;
-   unsigned long osub;
-   unsigned long kx;
-   unsigned char i;
+   uint32_t maxextralen;
+   uint32_t xknob;
+   uint32_t elen;
+   uint32_t okn;
+   uint32_t osub;
+   uint32_t kx;
+   uint8_t i;
    char e[100];
    char s[100];
    char ch;
+   maxextralen = aprsdecode_lums.fontxsize*14UL;
+                /* dynamic message field width */
    e[0U] = 0;
    if (aprsdecode_lums.wxcol=='R') aprsstr_Append(e, 100ul, "Rain Map", 9ul);
    else if (aprsdecode_lums.wxcol=='W') {
@@ -9574,21 +10132,26 @@ static void statusbar(void)
       aprsstr_Append(e, 100ul, (char *) &aprsdecode_click.onesymbol.pic,
                 1u/1u);
    }
-   elen = aprsstr_Length(e, 100ul)*6UL;
-   if (elen>0UL) {
-      elen += 4UL;
-      if (elen>84UL) elen = 84UL;
+   else if (useri_configon(useri_fGEOPROFIL)) {
+      aprsstr_Append(e, 100ul, "Geo Profile", 12ul);
    }
+   elen = aprsstr_Length(e, 100ul)*aprsdecode_lums.fontxsize;
+   if (elen>0UL) {
+      elen += aprsdecode_lums.fontxsize-2UL;
+      if (elen>maxextralen) elen = maxextralen;
+   }
+   xknob = (uint32_t)microspace("\360 \365", 4ul);
    menu = findmenuid(254UL);
    redraw = menu!=0;
    if (!redraw) {
-      newmenu(&menu, 214UL, aprsdecode_lums.fontysize, 1UL, useri_bBLACK);
+      newmenu(&menu, xknob*10UL+maxextralen, aprsdecode_lums.fontysize+1UL,
+                1UL, useri_bBLACK);
    }
    okn = menu->oldknob;
    osub = menu->oldsub;
    menu->oldknob = 0UL;
-   menu->xsize = 130UL+elen;
-   strncpy(s,"\346\360N\365|\3601\365|\3602\365|\3603\365|\3604\365|\360L\365\
+   menu->xsize = xknob*10UL+elen;
+   strncpy(s,"\346\361N\364|\3601\365|\3602\365|\3603\365|\3604\365|\360L\365\
 |\360M\365|\360",100u);
    if (aprsdecode_maploadpid.runs) ch = 'd';
    else ch = 'e';
@@ -9601,12 +10164,13 @@ static void statusbar(void)
       aprsstr_Append(s, 100ul, e, 100ul);
    }
    addline(menu, s, 100ul, "\277", 2ul, 1700UL);
-   statuscoly(menu->image, 6L, aprsdecode_realtime-aprsdecode_lasttcptx,
+   statuscoly(menu->image, 0L, (int32_t)xknob,
+                aprsdecode_realtime-aprsdecode_lasttcptx,
                 aprsdecode_realtime-aprsdecode_lasttcprx,
                 useri_configon(useri_fCONNECT));
    kx = 0UL;
    for (i = useri_fUDP1; i<=useri_fUDP4; i++) {
-      statuscoly(menu->image, (long)(6UL+13UL*(kx+1UL)),
+      statuscoly(menu->image, (int32_t)(xknob*(kx+1UL)), (int32_t)xknob,
                 aprsdecode_realtime-aprsdecode_udpsocks0[kx].lastudptx,
                 aprsdecode_realtime-aprsdecode_udpsocks0[kx].lastudprx,
                 useri_configon(i));
@@ -9615,22 +10179,25 @@ static void statusbar(void)
    ++kx;
    c.r = 0U;
    c.g = 0U;
-   if (aprsdecode_lums.logmode) c.b = 700U;
-   else c.b = 0U;
-   statuscol(menu->image, (long)(6UL+13UL*kx), 5L, c);
+   c.b = 0U;
+   if (aprsdecode_lums.logmode) {
+      c.r = 500U;
+      c.g = 300U;
+   }
+   statuscol(menu->image, (int32_t)(xknob*kx), (int32_t)xknob, c);
    ++kx;
    if (aprsdecode_msgfifo0) c.r = 300U;
    else c.r = 0U;
    c.g = 0U;
    c.b = 0U;
-   statuscol(menu->image, (long)(6UL+13UL*kx), 5L, c);
+   statuscol(menu->image, (int32_t)(xknob*kx), (int32_t)xknob, c);
    ++kx;
    c.r = 0U;
    c.g = 0U;
    c.b = 0U;
    if (useri_isblown) c.r = 400U;
    else if (useri_configon(useri_fALLOWEXP)) c.g = 300U;
-   statuscol(menu->image, (long)(6UL+13UL*kx), 5L, c);
+   statuscol(menu->image, (int32_t)(xknob*kx), (int32_t)xknob, c);
    ++kx;
    if (useri_configon(useri_fTRACKFILT)) {
       c.g = 300U;
@@ -9641,7 +10208,7 @@ static void statusbar(void)
       c.b = 0U;
    }
    c.r = 0U;
-   statuscol(menu->image, (long)(6UL+13UL*kx), 5L, c);
+   statuscol(menu->image, (int32_t)(xknob*kx), (int32_t)xknob, c);
    ++kx;
    if (aprsdecode_lums.obj>0L) {
       c.g = 100U;
@@ -9652,13 +10219,13 @@ static void statusbar(void)
       c.b = 0U;
    }
    c.r = 0U;
-   statuscol(menu->image, (long)(6UL+13UL*kx), 5L, c);
+   statuscol(menu->image, (int32_t)(xknob*kx), (int32_t)xknob, c);
    ++kx;
    if (elen>0UL) {
       c.r = 300U;
       c.g = 100U;
       c.b = 0U;
-      statuscol(menu->image, (long)(elen/2UL+13UL*kx), (long)(elen/2UL), c);
+      statuscol(menu->image, (int32_t)(xknob*kx), (int32_t)elen, c);
    }
    menu->wid = 254UL;
    menu->hiknob = 0UL;
@@ -9666,27 +10233,30 @@ static void statusbar(void)
       menu->ysize = menu->oldknob*menu->yknob;
       menu->oldknob = 0UL;
    }
-   if (aprsdecode_lums.headmenuy) kx = 188UL;
+   if (aprsdecode_lums.headmenuy) kx = 31UL*aprsdecode_lums.fontxsize+2UL;
    else kx = 0UL;
    menu->pullconf = useri_fMENUXYSTATUS;
    menu->pullyknob = 8UL;
-   setmenupos(menu, (unsigned long)useri_conf2int(useri_fMENUXYSTATUS, 0UL,
-                0L, 32767L, (long)kx),
-                (unsigned long)useri_conf2int(useri_fMENUXYSTATUS, 1UL, 0L,
+   setmenupos(menu, (uint32_t)useri_conf2int(useri_fMENUXYSTATUS, 0UL, 0L,
+                32767L, (int32_t)kx),
+                (uint32_t)useri_conf2int(useri_fMENUXYSTATUS, 1UL, 0L,
                 32767L, 0L));
-   /*  IF lums.headmenuy THEN menu^.x0:=TOOLBARX+1 ELSE menu^.x0:=0 END; */
    menu->oldknob = okn;
    menu->oldsub = osub;
 /*  menu^.y0:=0; */
 } /* end statusbar() */
 
 
-static void setsym(unsigned long knob, unsigned long subknob,
-                unsigned char set, pMENU pm, char dest)
+static void setsym(uint32_t knob, uint32_t subknob, uint8_t set,
+                pMENU pm, char dest)
 {
-   char s[3];
+   char s[100];
+   uint32_t n;
+   uint32_t j;
+   uint32_t i;
+   uint32_t ns;
    if (findmenuid(203UL)==pm) {
-      useri_confstr(set, s, 3ul);
+      useri_confstr(set, s, 100ul);
       if (knob>=4UL && knob<=5UL) {
          if (subknob<=12UL) s[0U] = (char)(97UL+subknob+(5UL-knob)*13UL);
       }
@@ -9694,19 +10264,57 @@ static void setsym(unsigned long knob, unsigned long subknob,
          if (subknob<=12UL) s[0U] = (char)(65UL+subknob+(3UL-knob)*13UL);
       }
       else if (knob==1UL && subknob<=9UL) s[0U] = (char)(48UL+subknob);
-      useri_AddConfLine(set, 0U, s, 3ul);
+      useri_AddConfLine(set, 0U, s, 100ul);
+      if (set==useri_fONESYMB) useri_rdonesymb(1, 0);
    }
    else {
-      useri_killmenuid(203UL);
-      if (knob>6UL) s[0U] = '/';
-      else s[0U] = '\\';
-      s[1U] = (char)(32UL+((12UL-knob)%6UL)*16UL+subknob);
-      s[2U] = 0;
-      useri_AddConfLine(set, 0U, s, 3ul);
-      if (s[0U]=='\\') {
-         updatemenus();
-         overlaychoose(dest);
+      ns = subknob+(12UL-knob)*16UL;
+      if (set==useri_fONESYMB) {
+         /* multisymbol choose */
+         useri_rdonesymb(1, 0);
+         if (X2C_INL(ns,192,aprsdecode_click.onesymbolset)) {
+            X2C_EXCL(aprsdecode_click.onesymbolset,ns,192);
+         }
+         else X2C_INCL(aprsdecode_click.onesymbolset,ns,192);
+         j = 0UL;
+         for (i = 0UL; i<=191UL; i++) {
+            if (X2C_INL(i,192,aprsdecode_click.onesymbolset)) ++j;
+         } /* end for */
+         n = 0UL;
+         for (i = 0UL; i<=191UL; i++) {
+            n = n/2UL+8UL*(uint32_t)X2C_INL(i,192,
+                aprsdecode_click.onesymbolset);
+            if ((i&3UL)==3UL) {
+               if (n<10UL) n += 48UL;
+               else n += 55UL;
+               s[2UL+i/4UL] = (char)n;
+               n = 0UL;
+            }
+         } /* end for */
+         s[50U] = 0;
+         if (j>=1UL) {
+            s[0U] = '*';
+            s[1U] = ' ';
+         }
+         else {
+            if (ns<96UL) s[0U] = '/';
+            else s[0U] = '\\';
+            s[1U] = (char)(32UL+ns%96UL);
+         }
+         ns = 192UL;
       }
+      if (ns<192UL) {
+         if (ns<96UL) s[0U] = '/';
+         else s[0U] = '\\';
+         s[1U] = (char)(32UL+ns%96UL);
+         s[2U] = 0;
+      }
+      if ((uint8_t)s[1U]>' ' || set==useri_fONESYMB) {
+         useri_AddConfLine(set, 0U, s, 100ul);
+      }
+      useri_killmenuid(203UL);
+      updatemenus();
+      if (s[0U]=='\\' && (uint8_t)s[1U]>' ') overlaychoose(dest);
    }
    updatemenus();
 } /* end setsym() */
@@ -9716,19 +10324,19 @@ static void downloadmenu(void)
 {
    pMENU menu;
    if (maptool_mappack.run) {
-      newmenu(&menu, 100UL, aprsdecode_lums.fontysize+7UL, 1UL,
-                useri_bCOLOR);
+      newmenu(&menu, aprsdecode_lums.fontxsize*17UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 1UL, useri_bCOLOR);
       addline(menu, "Stop Download", 14ul, "\240", 2ul, 2300UL);
    }
    else {
       /*    IF NOT configon(fGETMAPS) */
       /*    THEN textautosize(0, 0, 20, 5, "r",
                 'Enable "Load Map Program" in Config/Map Parameter') END;  */
-      newmenu(&menu, 140UL, aprsdecode_lums.fontysize+7UL, 1UL,
-                useri_bCOLOR);
+      newmenu(&menu, aprsdecode_lums.fontxsize*23UL+4UL,
+                aprsdecode_lums.fontysize+7UL, 1UL, useri_bCOLOR);
       addline(menu, "", 1ul, "\237", 2ul, 2301UL);
-      menu->clampkb |= 0x2UL;
-      menu->confidx[1U] = 86U;
+      X2C_INCL(menu->clampkb,1U,61);
+      menu->confidx[1U] = 88U;
       keybknob(menu, 1UL, 0, 0UL);
    }
    menu->ysize = menu->oldknob*menu->yknob;
@@ -9746,26 +10354,26 @@ extern void useri_killbubble(void)
 #define useri_MARGIN 20
 
 
-extern void useri_textbubble(struct aprspos_POSITION pos, char s[],
-                unsigned long s_len, char last)
+extern void useri_textbubble(struct aprsstr_POSITION pos, char s[],
+                uint32_t s_len, char last)
 {
    pMENU menu;
-   unsigned long i;
-   unsigned long ym;
-   unsigned long xm;
-   unsigned long y;
-   unsigned long x;
-   unsigned long yw;
-   unsigned long xw;
-   long yp;
-   long xp;
+   uint32_t i;
+   uint32_t ym;
+   uint32_t xm;
+   uint32_t y;
+   uint32_t x;
+   uint32_t yw;
+   uint32_t xw;
+   int32_t yp;
+   int32_t xp;
    float ypoi;
    float xpoi;
    struct aprsdecode_COLTYP col;
    struct maptool_PIX * anonym;
    maptool_pIMAGE anonym0;
-   unsigned long tmp;
-   unsigned long tmp0;
+   uint32_t tmp;
+   uint32_t tmp0;
    if (!aprspos_posvalid(pos) || maptool_mapxy(pos, &xpoi, &ypoi)<0L) return;
    if (redrawimg==0) {
       osi_WrStrLn(s, s_len); /* no graphical window open */
@@ -9774,14 +10382,15 @@ extern void useri_textbubble(struct aprspos_POSITION pos, char s[],
    i = 0UL;
    xw = 23UL;
    while (i<=s_len-1 && s[i]) {
-      xw += maptool_charwidth0(s[i]); /* x size of text */
+      xw += maptool_charwidth(s[i]); /* x size of text */
       ++i;
    }
    yw = aprsdecode_lums.fontysize+8UL;
-   xp = (long)X2C_TRUNCI(xpoi,X2C_min_longint,X2C_max_longint)-1L;
-   yp = ((long)X2C_TRUNCI(ypoi,X2C_min_longint,X2C_max_longint)+(long)yw)-1L;
-   if (((xp<=0L || xp+(long)xw>(long)mainxs()) || yp<=0L) || yp+(long)
-                yw>(long)useri_mainys()) return;
+   xp = (int32_t)X2C_TRUNCI(xpoi,X2C_min_longint,X2C_max_longint)-1L;
+   yp = ((int32_t)X2C_TRUNCI(ypoi,X2C_min_longint,
+                X2C_max_longint)+(int32_t)yw)-1L;
+   if (((xp<=0L || xp+(int32_t)xw>(int32_t)mainxs()) || yp<=0L)
+                || yp+(int32_t)yw>(int32_t)useri_mainys()) return;
    allocmenu(&menu, xw, yw, 0);
    xm = menu->image->Len1-1;
    ym = menu->image->Len0-1;
@@ -9789,9 +10398,9 @@ extern void useri_textbubble(struct aprspos_POSITION pos, char s[],
    menu->ysize = ym+1UL;
    menu->wid = 201UL;
    menu->background = useri_bTRANSP;
-   menu->x0 = (unsigned long)xp;
-   menu->y00 = useri_mainys()-(unsigned long)yp;
-   menu->nohilite = 0x7FFFFFFFUL;
+   menu->x0 = (uint32_t)xp;
+   menu->y00 = useri_mainys()-(uint32_t)yp;
+   memcpy(menu->nohilite,_cnst,8u);
    tmp = menu->ysize-1UL;
    y = 0UL;
    if (y<=tmp) for (;; y++) {
@@ -9816,12 +10425,9 @@ extern void useri_textbubble(struct aprspos_POSITION pos, char s[],
                   anonym->b = 2U;
                   if (!aprsdecode_lums.menutransp) {
                      /* user disabled transparency */
-                     anonym->r = (unsigned short)
-                aprsdecode_lums.menubackcol.r;
-                     anonym->g = (unsigned short)
-                aprsdecode_lums.menubackcol.g;
-                     anonym->b = (unsigned short)
-                aprsdecode_lums.menubackcol.b;
+                     anonym->r = (uint16_t)aprsdecode_lums.menubackcol.r;
+                     anonym->g = (uint16_t)aprsdecode_lums.menubackcol.g;
+                     anonym->b = (uint16_t)aprsdecode_lums.menubackcol.b;
                   }
                }
             }
@@ -9845,17 +10451,18 @@ extern void useri_textbubble(struct aprspos_POSITION pos, char s[],
 } /* end textbubble() */
 
 
-static void mouseshow(unsigned long x, unsigned long y)
+static void mouseshow(uint32_t x, uint32_t y)
 {
    char s[151];
    char h[21];
-   struct aprspos_POSITION pos1;
-   struct aprspos_POSITION pos;
+   char info[4096];
+   struct aprsstr_POSITION pos1;
+   struct aprsstr_POSITION pos;
    float dist;
-   long alt;
+   int32_t alt;
    /*WrInt(panowin.hx,10); WrInt(panowin.hy,10); WrStrLn(" pan"); */
    struct maptool_PANOWIN * anonym;
-   aprsdecode_posinval(&pos);
+   aprsstr_posinval(&pos);
    dist = 0.0f;
    alt = -30000L;
    if (panowin.hover) {
@@ -9873,7 +10480,10 @@ static void mouseshow(unsigned long x, unsigned long y)
       s[0U] = 0;
       pos1 = pos;
       if (dist!=0.0f || !poioff && aprsdecode_initzoom>=useri_conf2int(useri_fMOUSELOC,
-                 0UL, 1L, 18L, 9L)) maptool_POIname(&pos, s, 151ul);
+                 0UL, 1L, 18L, 9L)) {
+         maptool_POIname(&pos, s, 151ul, info, 4096ul);
+                /* no pois on mouse over menu */
+      }
       if (dist!=0.0f) {
          /* pos from panorama */
          pos = pos1; /* not lock to POI on panorama */
@@ -9892,20 +10502,21 @@ static void mouseshow(unsigned long x, unsigned long y)
          aprsdecode_click.bubblpos = pos;
          aprsdecode_click.lastpoi = 0;
          aprsstr_Assign(aprsdecode_click.bubblstr, 50ul, s, 151ul);
+         aprsstr_Assign(aprsdecode_click.bubblinfo, 4096ul, info, 4096ul);
       }
    }
 /*    textbubble(pos, s, FALSE); */
 } /* end mouseshow() */
 
 
-static void knoblamp(pMENU menu, unsigned long knob)
+static void knoblamp(pMENU menu, uint32_t knob)
 {
    char typ;
-   unsigned long i;
+   uint32_t i;
    typ = menu->cmds[knob];
-   for (i = 1UL; i<=30UL; i++) {
+   for (i = 1UL; i<=60UL; i++) {
       if (typ==menu->cmds[i]) {
-         onoffm(menu->image, 6L, (long)((i-1UL)*menu->yknob+menu->yknob/2UL),
+         onoffm(menu->image, 6L, (int32_t)((i-1UL)*menu->yknob+menu->yknob/2UL),
                  i==knob);
       }
    } /* end for */
@@ -9930,7 +10541,7 @@ static void appbar(void)
 } /* end appbar() */
 
 
-static void resizecursors(pMENU m, unsigned long px, unsigned long py)
+static void resizecursors(pMENU m, uint32_t px, uint32_t py)
 {
    struct maptool_PANOWIN * anonym;
    if (m->wid==225UL) listwincursors(m, px, py);
@@ -9939,8 +10550,8 @@ static void resizecursors(pMENU m, unsigned long px, unsigned long py)
       { /* with */
          struct maptool_PANOWIN * anonym = &panowin;
          anonym->hover = 1;
-         anonym->hx = (long)px;
-         anonym->hy = (long)py;
+         anonym->hx = (int32_t)px;
+         anonym->hy = (int32_t)py;
          anonym->mx = useri_xmouse.x;
          anonym->my = useri_xmouse.y;
       }
@@ -9949,9 +10560,9 @@ static void resizecursors(pMENU m, unsigned long px, unsigned long py)
 } /* end resizecursors() */
 
 
-static void whichmenu(unsigned long px, unsigned long py, pMENU * m,
-                unsigned long * knob, unsigned long * subknob,
-                unsigned long * xpos, unsigned long * ypos)
+static void whichmenu(uint32_t px, uint32_t py, pMENU * m,
+                uint32_t * knob, uint32_t * subknob, uint32_t * xpos,
+                uint32_t * ypos)
 {
    pMENU pm;
    struct MENU * anonym;
@@ -9975,11 +10586,11 @@ static void whichmenu(unsigned long px, unsigned long py, pMENU * m,
       }
       pm = pm->next;
    }
-   if (*knob>30UL) *knob = 30UL;
+   if (*knob>60UL) *knob = 60UL;
    *subknob = 0UL;
    if (*m && (*knob>0UL || (*m)->fullclamp)) {
       while ((*subknob<=20UL && (*m)->subk[*knob-1UL][*subknob]>0U)
-                && *xpos>(unsigned long)(*m)->subk[*knob-1UL][*subknob]) {
+                && *xpos>(uint32_t)(*m)->subk[*knob-1UL][*subknob]) {
          ++*subknob;
       }
       focuswid = (*m)->wid;
@@ -9989,21 +10600,21 @@ static void whichmenu(unsigned long px, unsigned long py, pMENU * m,
 } /* end whichmenu() */
 
 
-static char hilitemenu(unsigned long px, unsigned long py, char kbdch,
+static char hilitemenu(uint32_t px, uint32_t py, char kbdch,
                 pMENU pm)
 /* pm=NIL is find menu with x,y else use kbd up/down */
 {
-   unsigned long ki;
-   unsigned long posy;
-   unsigned long posx;
-   unsigned long subknob;
-   unsigned long knob;
+   uint32_t ki;
+   uint32_t posy;
+   uint32_t posx;
+   uint32_t subknob;
+   uint32_t knob;
    char c;
    char s[21];
    struct MENU * anonym;
    if (pm==0) {
       whichmenu(px, py, &pm, &knob, &subknob, &posx, &posy);
-      if (pm && !X2C_IN(knob,31,pm->clampkb)) clampedline = 0UL;
+      if (pm && !X2C_INL(knob,61,pm->clampkb)) clampedline = 0UL;
    }
    else {
       knob = pm->oldknob;
@@ -10014,7 +10625,7 @@ static char hilitemenu(unsigned long px, unsigned long py, char kbdch,
             /* find next text line */
             if (ki==0UL) break;
             --ki;
-            if (X2C_IN(ki,31,pm->clampkb)) {
+            if (X2C_INL(ki,61,pm->clampkb)) {
                knob = ki;
                break;
             }
@@ -10022,9 +10633,9 @@ static char hilitemenu(unsigned long px, unsigned long py, char kbdch,
       }
       else if (kbdch=='\005') {
          for (;;) {
-            if (ki>=30UL) break;
+            if (ki>=60UL) break;
             ++ki;
-            if (X2C_IN(ki,31,pm->clampkb)) {
+            if (X2C_INL(ki,61,pm->clampkb)) {
                knob = ki;
                break;
             }
@@ -10035,7 +10646,7 @@ static char hilitemenu(unsigned long px, unsigned long py, char kbdch,
       /*WrInt(knob, 5);WrInt(subknob, 5); WrStrLn(" y"); */
       poioff = 1;
       useri_killbubble();
-      useri_starthint((unsigned long)pm->helpindex[knob]+subknob, 0);
+      useri_starthint((uint32_t)pm->helpindex[knob]+subknob, 0);
       if (pm->cmds[knob] && (knob!=pm->oldknob || subknob!=pm->oldsub)) {
          /*WrInt(knob, 5); WrInt(pm^.oldknob, 5);WrStrLn("km"); */
          killmenus(pm->next);
@@ -10048,9 +10659,10 @@ static char hilitemenu(unsigned long px, unsigned long py, char kbdch,
                infos();
             }
             else if (c=='F') findopl(1);
+            else if (c=='C') showpoicategory(1);
             else if (c=='K') {
                useri_confstr(useri_fCLICKMAP, s, 21ul);
-               if (((s[0U]=='C' || s[0U]=='X') || s[0U]=='Y') || s[0U]=='2') {
+               if (((s[0U]=='c' || s[0U]=='X') || s[0U]=='Y') || s[0U]=='2') {
                   mapclick();
                }
                else nextclick();
@@ -10083,12 +10695,14 @@ static char hilitemenu(unsigned long px, unsigned long py, char kbdch,
             else if (c=='\325') {
                if (subknob>0UL) symchoose('\326');
             }
+            else if (c=='\333') {
+               poinameline = knob;
+               symchoose('\334');
+            }
             else if (c=='\275') {
                if (knob==5UL) configbeep();
             }
-            else if (c=='\271') {
-               msgmenu();
-            }
+            else if (c=='\271') msgmenu();
             else if (c=='\316') colourchoose(knob);
             else if (c=='\313') geoprofil();
             else if (c=='\321') colourchoosegeo(knob);
@@ -10098,26 +10712,19 @@ static char hilitemenu(unsigned long px, unsigned long py, char kbdch,
             if (anonym->hiknob>0UL) {
                /* undo old hilite */
                inv(pm, anonym->oldsub, anonym->hiknob);
-               if (X2C_IN(anonym->hiknob,31,anonym->clampkb)) {
+               if (X2C_INL(anonym->hiknob,61,anonym->clampkb)) {
                   keybknob(pm, anonym->hiknob, 0, 0UL);
                }
             }
             anonym->oldknob = knob;
             anonym->oldsub = subknob;
             anonym->hiknob = knob;
-            if (X2C_IN(anonym->hiknob,31,anonym->clampkb)) {
+            if (X2C_INL(anonym->hiknob,61,anonym->clampkb)) {
                keybknob(pm, anonym->hiknob, 1, 0UL);
             }
             inv(pm, anonym->oldsub, anonym->hiknob);
          }
          hidemenu(0, 0);
-         /*WrInt(ORD(pm^.confidx[knob]), 5);WrInt(ORD(pm^.scrolling), 5);
-                WrInt(knob, 5);WrInt(pm^.helpindex[knob], 5);WrStrLn("=sc");
-                */
-         /*      hintnum:=pm^.helpindex[knob]+subknob; */
-         /*      IF pm^.scrolling THEN INC(hintnum, VAL(CARDINAL,
-                pm^.confidx[knob])*2) END; */
-         /*WrInt(hintnum, 5);WrInt(subknob, 5);WrStrLn("=hint2"); */
          return 1;
       }
       resizecursors(pm, posx, posy);
@@ -10137,13 +10744,13 @@ static void printhint(void)
 {
    char s[1001];
    char buf[32768];
-   long my;
-   long m;
-   long w;
-   long len;
-   long p;
-   unsigned long n;
-   long fd;
+   int32_t my;
+   int32_t m;
+   int32_t w;
+   int32_t len;
+   int32_t p;
+   uint32_t n;
+   int32_t fd;
    char c;
    if (xosi_pulling || xosi_zooming) return;
    if (hintnum==1700UL) tcpstat();
@@ -10171,15 +10778,13 @@ static void printhint(void)
                }
             }
             else if (m==1L) {
-               if ((unsigned char)c>='0' && (unsigned char)c<='9') {
-                  if (n<100000UL) {
-                     n = (10UL*n+(unsigned long)(unsigned char)c)-48UL;
-                  }
+               if ((uint8_t)c>='0' && (uint8_t)c<='9') {
+                  if (n<100000UL) n = (10UL*n+(uint32_t)(uint8_t)c)-48UL;
                }
                else m = 2L;
             }
             else if (n==hintnum) {
-               if ((unsigned char)c>=' ' || c=='\012') {
+               if ((uint8_t)c>=' ' || c=='\012') {
                   if (c=='|') break;
                   if (w<1000L) {
                      s[w] = c;
@@ -10191,12 +10796,12 @@ static void printhint(void)
             ++p;
          }
          if (w==0L) {
-            aprsstr_IntToStr((long)hintnum, 1UL, s, 1001ul);
+            aprsstr_IntToStr((int32_t)hintnum, 1UL, s, 1001ul);
             aprsstr_Append(s, 1001ul, " hint text", 11ul);
-            w = (long)aprsstr_Length(s, 1001ul);
+            w = (int32_t)aprsstr_Length(s, 1001ul);
          }
          else s[w] = 0;
-         while (w>0L && (unsigned char)s[w-1L]<=' ') {
+         while (w>0L && (uint8_t)s[w-1L]<=' ') {
             --w; /* remove trailing junk */
             s[w] = 0;
          }
@@ -10218,9 +10823,9 @@ static void printhint(void)
 
 static void closewxwins(void)
 {
-   unsigned char wi;
+   uint8_t wi;
    for (wi = aprsdecode_wTEMP;; wi++) {
-      useri_killmenuid(20UL+(unsigned long)wi);
+      useri_killmenuid(20UL+(uint32_t)wi);
       if (wi==aprsdecode_wSIEV) break;
    } /* end for */
 } /* end closewxwins() */
@@ -10258,20 +10863,20 @@ static pMENU FindClampMenu(void)
 {
    pMENU pm;
    pm = menus; /* go thru menu chain till a clamp window */
-   while (pm && (pm->wid!=focuswid || !(pm->fullclamp || X2C_IN(pm->oldknob,
-                31,pm->clampkb)))) pm = pm->next;
+   while (pm && (pm->wid!=focuswid || !(pm->fullclamp || X2C_INL(pm->oldknob,
+                61,pm->clampkb)))) pm = pm->next;
    return pm;
 } /* end FindClampMenu() */
 
 
-static void rotatehist(unsigned char v, char up)
+static void rotatehist(uint8_t v, char up)
 {
    char s1[201];
    char s[201];
    pCONFLINE p1;
    pCONFLINE p0;
-   unsigned long n;
-   unsigned long i;
+   uint32_t n;
+   uint32_t i;
    i = 0UL;
    conflineno(v, 0UL, 1, &p0);
    if (p0) {
@@ -10351,14 +10956,14 @@ static void kbtomenu(char * ch)
 /* if keystroke to window return 0C */
 {
    pMENU pm;
-   unsigned long eot;
-   unsigned long idx;
-   unsigned long le;
-   unsigned long i;
+   uint32_t eot;
+   uint32_t idx;
+   uint32_t le;
+   uint32_t i;
    char uml[10];
    struct CONFIG * anonym;
    struct CONFLINE * anonym0;
-   unsigned long tmp;
+   uint32_t tmp;
    aprsdecode_lums.moded = 1;
    pm = FindClampMenu();
    if (pm==0) return;
@@ -10373,7 +10978,7 @@ static void kbtomenu(char * ch)
          clampedline = pm->oldknob;
          useri_refresh = 1;
       }
-      else if ((unsigned long)pm->confidx[pm->oldknob]==0UL) {
+      else if ((uint32_t)pm->confidx[pm->oldknob]==0UL) {
          /* rotate in history lines */
          rotatehist(useri_fFIND, *ch=='\005');
          *ch = 0;
@@ -10383,13 +10988,13 @@ static void kbtomenu(char * ch)
    uml[0U] = *ch;
    uml[1U] = 0;
    xosi_Umlaut(uml, 10ul);
-   while ((unsigned char)uml[0U]>0) {
+   while ((uint8_t)uml[0U]>0) {
       *ch = uml[0U];
-      idx = (unsigned long)pm->confidx[pm->oldknob];
-      if (idx<=153UL) {
+      idx = (uint32_t)pm->confidx[pm->oldknob];
+      if (idx<=155UL) {
          { /* with */
             struct CONFIG * anonym = &configs[idx];
-            if (anonym->lines==0) icfg((unsigned char)idx, " ", 2ul);
+            if (anonym->lines==0) icfg((uint8_t)idx, " ", 2ul);
             { /* with */
                struct CONFLINE * anonym0 = anonym->lines;
                eot = 0UL;
@@ -10400,28 +11005,28 @@ static void kbtomenu(char * ch)
                   ++i;
                }
                le = 200UL;
-               if (anonym->width>0U && 200UL>(unsigned long)anonym->width) {
-                  le = (unsigned long)anonym->width;
+               if (anonym->width>0U && 200UL>(uint32_t)anonym->width) {
+                  le = (uint32_t)anonym->width;
                }
                if (le==0UL) le = 1UL;
-               if ((unsigned long)anonym->curspos>=le) {
-                  anonym->curspos = (unsigned short)(le-1UL);
+               if ((uint32_t)anonym->curspos>=le) {
+                  anonym->curspos = (uint16_t)(le-1UL);
                }
                if (*ch=='\023' || *ch=='\311') {
                   if (anonym->curspos>0U) --anonym->curspos;
                }
                else if (*ch=='\004' || *ch=='\310') {
                   ++anonym->curspos;
-                  if ((unsigned long)anonym->curspos>=le) {
-                     anonym->curspos = (unsigned short)(le-1UL);
+                  if ((uint32_t)anonym->curspos>=le) {
+                     anonym->curspos = (uint16_t)(le-1UL);
                   }
                }
                else if (*ch=='\001') anonym->curspos = 0U;
-               else if (*ch=='\002') anonym->curspos = (unsigned short)eot;
+               else if (*ch=='\002') anonym->curspos = (uint16_t)eot;
                else if (*ch=='\017') {
                   overtype = !overtype;
-                  if ((unsigned char)anonym0->line[anonym->curspos]<=' ') {
-                     while (anonym->curspos>0U && (unsigned char)
+                  if ((uint8_t)anonym0->line[anonym->curspos]<=' ') {
+                     while (anonym->curspos>0U && (uint8_t)
                 anonym0->line[anonym->curspos-1U]<=' ') --anonym->curspos;
                   }
                }
@@ -10429,7 +11034,7 @@ static void kbtomenu(char * ch)
                   if (anonym->curspos>0U) {
                      /*            knoboff(idx, pm); */
                      tmp = le-1UL;
-                     i = (unsigned long)anonym->curspos;
+                     i = (uint32_t)anonym->curspos;
                      if (i<=tmp) for (;; i++) {
                         anonym0->line[i-1UL] = anonym0->line[i];
                         if (i==tmp) break;
@@ -10441,20 +11046,20 @@ static void kbtomenu(char * ch)
                else if (*ch=='\177') {
                   /*          knoboff(idx, pm); */
                   tmp = le-1UL;
-                  i = (unsigned long)(anonym->curspos+1U);
+                  i = (uint32_t)(anonym->curspos+1U);
                   if (i<=tmp) for (;; i++) {
                      anonym0->line[i-1UL] = anonym0->line[i];
                      if (i==tmp) break;
                   } /* end for */
                   anonym0->line[le-1UL] = ' ';
                }
-               if ((unsigned long)anonym->curspos>=le) {
-                  anonym->curspos = (unsigned short)(le-1UL);
+               if ((uint32_t)anonym->curspos>=le) {
+                  anonym->curspos = (uint16_t)(le-1UL);
                }
-               if ((unsigned char)*ch>=' ' && (unsigned char)*ch<'\177') {
+               if ((uint8_t)*ch>=' ' && (uint8_t)*ch<'\177') {
                   /*          knoboff(idx, pm); */
                   if (!overtype) {
-                     tmp = (unsigned long)(anonym->curspos+1U);
+                     tmp = (uint32_t)(anonym->curspos+1U);
                      i = le-1UL;
                      if (i>=tmp) for (;; i--) {
                         anonym0->line[i] = anonym0->line[i-1UL];
@@ -10462,9 +11067,7 @@ static void kbtomenu(char * ch)
                      } /* end for */
                   }
                   anonym0->line[anonym->curspos] = *ch;
-                  if ((unsigned long)anonym->curspos<le-1UL) {
-                     ++anonym->curspos;
-                  }
+                  if ((uint32_t)anonym->curspos<le-1UL) ++anonym->curspos;
                }
                i = le-1UL;
                while (i>0UL && anonym0->line[i]==' ') {
@@ -10474,7 +11077,7 @@ static void kbtomenu(char * ch)
                if (anonym0->line[i]==' ') anonym0->line[i] = 0;
                anonym0->line[le] = 0;
             }
-            if (idx==23UL || idx==26UL) beaconlen();
+            if (idx==25UL || idx==28UL) beaconlen();
          }
       }
       aprsstr_Delstr(uml, 10ul, 0UL, 1UL);
@@ -10532,7 +11135,7 @@ static void deletop(void)
                if (X2C_STRCMP(anonym->opf->call,9u,aprsdecode_click.mhop,
                 9u)==0) aprsdecode_click.mhop[0UL] = 0;
                aprsdecode_click.entries = 0UL;
-               aprsdecode_lastpurge = 0UL; /* starte a purge */
+               aprsdecode_lastpurge = 0UL; /* start a purge */
             }
             aprsstr_Append(s, 100ul, " Deleted", 9ul);
             useri_say(s, 100ul, 4UL, 'r');
@@ -10546,33 +11149,33 @@ static void deletop(void)
 static void redrawpop(maptool_pIMAGE mainimg)
 /* join map and menus and write pixels to screen */
 {
-   X2C_ADDRESS xbufa;
-   X2C_ADDRESS a;
-   unsigned long xbufysize;
-   unsigned long xbufxsize;
-   unsigned long yym;
-   unsigned long ym;
-   unsigned long xl;
-   unsigned long xm;
-   unsigned long yof;
-   unsigned long xof;
-   unsigned long y;
-   unsigned long x;
-   unsigned long inca;
+   char * xbufa;
+   char * a;
+   uint32_t xbufysize;
+   uint32_t xbufxsize;
+   uint32_t yym;
+   uint32_t ym;
+   uint32_t xl;
+   uint32_t xm;
+   uint32_t yof;
+   uint32_t xof;
+   uint32_t y;
+   uint32_t x;
+   uint32_t inca;
    pMENU menu;
    maptool_pIMAGE img;
-   unsigned short bm;
-   unsigned short gm;
-   unsigned short rm;
-   unsigned short bh;
-   unsigned short gh;
-   unsigned short rh0;
+   uint16_t bm;
+   uint16_t gm;
+   uint16_t rm;
+   uint16_t bh;
+   uint16_t gh;
+   uint16_t rh0;
    char transp;
    /*        IF x+xof<xbufxsize THEN */
    struct maptool_PIX * anonym;
    struct maptool_PIX * anonym0;
    struct MENU * anonym1;
-   unsigned long tmp;
+   uint32_t tmp;
    if (mainimg==0) return;
    xosi_getscreenbuf(&xbufa, &xbufxsize, &xbufysize, &inca);
    img = mainimg;
@@ -10616,8 +11219,8 @@ static void redrawpop(maptool_pIMAGE mainimg)
       y = 0UL;
       if (y<=tmp) for (;; y++) {
          if (y+yof<xbufysize) {
-            a = (X2C_ADDRESS)((char *)xbufa+(long)(((y+yof)*xbufxsize+xof)
-                *inca));
+            a = (char *)((char *)xbufa+(int32_t)(((y+yof)
+                *xbufxsize+xof)*inca));
             yym = ym-y;
             xl = xm+1UL;
             if (xl+xof>=xbufxsize) {
@@ -10640,21 +11243,12 @@ static void redrawpop(maptool_pIMAGE mainimg)
                            rm = anonym0->r;
                            gm = anonym0->g;
                            bm = anonym0->b;
-                           if ((unsigned long)
-                rm>=aprsdecode_lums.menubackcol.r) {
-                              rm = (unsigned short)
-                aprsdecode_lums.menubackcol.r;
-                           }
-                           if ((unsigned long)
-                gm>=aprsdecode_lums.menubackcol.g) {
-                              gm = (unsigned short)
-                aprsdecode_lums.menubackcol.g;
-                           }
-                           if ((unsigned long)
-                bm>=aprsdecode_lums.menubackcol.b) {
-                              bm = (unsigned short)
-                aprsdecode_lums.menubackcol.b;
-                           }
+                           if ((uint32_t)rm>=aprsdecode_lums.menubackcol.r)
+                 rm = (uint16_t)aprsdecode_lums.menubackcol.r;
+                           if ((uint32_t)gm>=aprsdecode_lums.menubackcol.g)
+                 gm = (uint16_t)aprsdecode_lums.menubackcol.g;
+                           if ((uint32_t)bm>=aprsdecode_lums.menubackcol.b)
+                 bm = (uint16_t)aprsdecode_lums.menubackcol.b;
                            rh0 += rm/2U;
                            gh += gm/2U;
                            bh += bm/2U;
@@ -10662,9 +11256,7 @@ static void redrawpop(maptool_pIMAGE mainimg)
                      }
                      if (bh>=1024U) bh = 1023U;
                      if (rh0>=1024U) rh0 = 1023U;
-                     if (gh>=1024U) {
-                        gh = 1023U;
-                     }
+                     if (gh>=1024U) gh = 1023U;
                      /*
                                      IF mainwin.bitperpixel<=16
                                      THEN xbuf016^[a]:=CAST(XPIX16,
@@ -10673,19 +11265,19 @@ static void redrawpop(maptool_pIMAGE mainimg)
                 gammalut[rh].r+gammalut[gh].g+gammalut[bh].b) END; 
                      */
                      if (inca==4UL) {
-                        *(unsigned long *)a = (unsigned long)
+                        *(uint32_t *)a = (uint32_t)
                 (xosi_gammalut[rh0].r|xosi_gammalut[gh].g|xosi_gammalut[bh]
                 .b);
-                        a = (X2C_ADDRESS)((char *)a+(long)4UL);
+                        a = (char *)((char *)a+(int32_t)4UL);
                      }
                      else {
-                        *(unsigned short *)a = (unsigned short)
+                        *(uint16_t *)a = (uint16_t)
                 (xosi_gammalut[rh0].r|xosi_gammalut[gh].g|xosi_gammalut[bh]
                 .b);
-                        a = (X2C_ADDRESS)((char *)a+(long)2UL);
+                        a = (char *)((char *)a+(int32_t)2UL);
                      }
                   }
-                  else a = (X2C_ADDRESS)((char *)a+(long)inca);
+                  else a = (char *)((char *)a+(int32_t)inca);
                }
                /*        END; */
                ++x;
@@ -10737,26 +11329,26 @@ extern void useri_redraw(maptool_pIMAGE img)
 } /* end redraw() */
 
 
-static void Pullmenu(unsigned long wid, long dx, long dy)
+static void Pullmenu(uint32_t wid, int32_t dx, int32_t dy)
 {
    pMENU pm;
    /*WrInt(dx, 10); WrInt(dy, 10); WrLn; */
    pm = findmenuid(wid);
-   if ((pm && (unsigned long)pm->pullconf>0UL) && !Scrollbars(pm, dx, dy)) {
+   if ((pm && (uint32_t)pm->pullconf>0UL) && !Scrollbars(pm, dx, dy)) {
       movewin(pm, dx, dy);
       useri_refresh = 1;
    }
 } /* end Pullmenu() */
 
 
-static void wxraw(unsigned char set)
+static void wxraw(uint8_t set)
 {
    char s[100];
-   long r;
+   int32_t r;
    useri_confstr(set, s, 100ul);
    r = aprsstr_InStr(s, 100ul, "u", 2ul);
    if (r<0L) aprsstr_Append(s, 100ul, "u", 2ul);
-   else aprsstr_Delstr(s, 100ul, (unsigned long)r, 1UL);
+   else aprsstr_Delstr(s, 100ul, (uint32_t)r, 1UL);
    icfg(set, s, 100ul);
 } /* end wxraw() */
 
@@ -10803,13 +11395,30 @@ static void setmarks(char marker1, char frommap)
 } /* end setmarks() */
 
 
-static void mouseleft(long mousx, long mousy)
+static void setpoisym(uint32_t line, uint32_t knob, uint32_t subknob)
+{
+   uint32_t ns;
+   struct aprsdecode__D1 * anonym;
+   if (line>0UL && line<=30UL) {
+      { /* with */
+         struct aprsdecode__D1 * anonym = &aprsdecode_poifiles[line-1UL];
+         ns = subknob+(12UL-knob)*16UL;
+         if (ns>=96UL) anonym->symbol[0UL] = '\\';
+         else anonym->symbol[0UL] = '/';
+         anonym->symbol[1UL] = (char)(32UL+ns%96UL);
+      }
+   }
+   updatemenus();
+} /* end setpoisym() */
+
+
+static void mouseleft(int32_t mousx, int32_t mousy)
 {
    pMENU menu;
-   unsigned long poty;
-   unsigned long potx;
-   unsigned long subknob;
-   unsigned long knob;
+   uint32_t poty;
+   uint32_t potx;
+   uint32_t subknob;
+   uint32_t knob;
    char c;
    if (mousx<0L) mousx = 0L;
    if (mousy<0L) mousy = 0L;
@@ -10817,13 +11426,13 @@ static void mouseleft(long mousx, long mousy)
    /*  refresh:=FALSE; */
    useri_starthint(0UL, 0);
    useri_killbubble();
-   whichmenu((unsigned long)mousx, (unsigned long)mousy, &menu, &knob,
-                &subknob, &potx, &poty);
+   whichmenu((uint32_t)mousx, (uint32_t)mousy, &menu, &knob, &subknob,
+                &potx, &poty);
    /*WrInt(ORD(menu<>NIL), 2); WrInt(knob, 10); WrInt(potx, 10);
                 WrInt(poty, 10);WrStrLn(" pxy"); */
    if (menu==0) {
       aprsdecode_click.x = mousx;
-      aprsdecode_click.y = (long)(useri_mainys()-(unsigned long)mousy);
+      aprsdecode_click.y = (int32_t)(useri_mainys()-(uint32_t)mousy);
       aprsdecode_click.selected = 0UL;
       /*WrInt(click.entries, 10);WrStrLn(" ent"); */
       if (((aprsdecode_click.cmd=='A' || aprsdecode_click.cmd=='a')
@@ -10835,10 +11444,10 @@ static void mouseleft(long mousx, long mousy)
       }
       else if (aprsdecode_click.x<=5L) aprsdecode_click.cmd = '\023';
       else if (aprsdecode_click.y<=5L) aprsdecode_click.cmd = '\030';
-      else if (aprsdecode_click.x>(long)(mainxs()-5UL)) {
+      else if (aprsdecode_click.x>(int32_t)(mainxs()-5UL)) {
          aprsdecode_click.cmd = '\004';
       }
-      else if (aprsdecode_click.y>(long)(useri_mainys()-5UL)) {
+      else if (aprsdecode_click.y>(int32_t)(useri_mainys()-5UL)) {
          aprsdecode_click.cmd = '\005';
       }
       else {
@@ -10881,7 +11490,7 @@ static void mouseleft(long mousx, long mousy)
          if (subknob==1UL) {
             aprsdecode_lums.errorstep = !aprsdecode_lums.errorstep;
          }
-         else textinfo((unsigned long)(subknob>0UL));
+         else textinfo((uint32_t)(subknob>0UL));
          aprsdecode_click.cmd = 'e';
          aprsdecode_click.dryrun = 0;
          updatemenus();
@@ -10909,7 +11518,7 @@ static void mouseleft(long mousx, long mousy)
       }
       else if (c=='\023') {
          if (subknob==0UL) aprsdecode_click.cmd = '\023';
-         else if (subknob==1UL) aprsdecode_click.cmd = 'c';
+         else if (subknob==1UL) aprsdecode_click.cmd = '\313';
          else aprsdecode_click.cmd = '\004';
          aprsdecode_click.dryrun = 0;
          useri_refresh = 1;
@@ -10957,7 +11566,10 @@ static void mouseleft(long mousx, long mousy)
          useri_killallmenus();
       }
       else if (c=='o') aprsdecode_click.cmd = c;
-      else if (c=='Q') aprsdecode_click.cmd = c;
+      else if (c=='Q') {
+         aprsdecode_click.cmd = c;
+         aprsdecode_quit = 1;
+      }
       else if (c=='\010') aprsdecode_click.cmd = c;
       else if (c=='X') aprsdecode_click.cmd = c;
       else if (c=='Y') aprsdecode_click.cmd = c;
@@ -10991,7 +11603,7 @@ static void mouseleft(long mousx, long mousy)
              ELSIF c=CMDRAIN THEN click.cmd:="w";
          */
          aprsdecode_click.cmd = ' ';
-         if (knob==3UL) aprsdecode_lums.wxcol = 'W';
+         if (knob==4UL) aprsdecode_lums.wxcol = 'W';
          else aprsdecode_lums.wxcol = 'R';
          aprsdecode_click.mhop[0UL] = 0;
          aprsdecode_click.onesymbol.tab = 0;
@@ -10999,7 +11611,7 @@ static void mouseleft(long mousx, long mousy)
       }
       else if (c=='\300') {
          aprsdecode_click.cmd = ' ';
-         if (knob==2UL) aprsdecode_lums.wxcol = 'w';
+         if (knob==3UL) aprsdecode_lums.wxcol = 'w';
          else aprsdecode_lums.wxcol = 0;
          aprsdecode_click.mhop[0UL] = 0;
          aprsdecode_click.onesymbol.tab = 0;
@@ -11057,7 +11669,7 @@ static void mouseleft(long mousx, long mousy)
       else if (c=='\310') aprsdecode_click.cmd = '\310';
       else if (c=='\237') aprsdecode_click.cmd = '\237';
       else if (c=='\201') {
-         if (knob==1UL) icfg(useri_fCLICKMAP, "C", 2ul);
+         if (knob==1UL) icfg(useri_fCLICKMAP, "c", 2ul);
          else if (knob==2UL) icfg(useri_fCLICKMAP, "X", 2ul);
          else if (knob==3UL) icfg(useri_fCLICKMAP, "Y", 2ul);
          else if (knob==4UL) icfg(useri_fCLICKMAP, "2", 2ul);
@@ -11076,9 +11688,7 @@ static void mouseleft(long mousx, long mousy)
          else if (knob==3UL) {
             toggcfg(useri_fCLICKSYM, 'C', "uA+CFGHEARD+XY.=", 17ul);
          }
-         else if (knob==4UL) {
-            toggcfg(useri_fCLICKSYM, 'u', "AC", 3ul);
-         }
+         else if (knob==4UL) toggcfg(useri_fCLICKSYM, 'u', "AC", 3ul);
          else if (knob==5UL) toggcfg(useri_fCLICKSYM, 'A', "", 1ul);
          else if (knob==6UL) {
             toggcfg(useri_fCLICKSYM, '.', "AC+CFGHEARD+XY=", 16ul);
@@ -11215,7 +11825,7 @@ static void mouseleft(long mousx, long mousy)
       else if (c=='\244') setsym(knob, subknob, useri_fRBSYMB, menu, c);
       else if (c=='\326') {
          setsym(knob, subknob, useri_fONESYMB, menu, c);
-         useri_rdonesymb(1);
+         useri_rdonesymb(1, 0);
          /*      click.onesymbol.tab:=0C;
                       (* redraw *) */
          /*      click.cmd:="s"; */
@@ -11224,6 +11834,15 @@ static void mouseleft(long mousx, long mousy)
       else if (c=='\325') {
          if (subknob==0UL) aprsdecode_click.cmd = 's';
       }
+      else if (c=='\334') setpoisym(poinameline, knob, subknob);
+      else if (c=='\333') {
+         if (knob-1UL<=29UL) {
+            aprsdecode_poifiles[knob-1UL].on = !aprsdecode_poifiles[knob-1UL]
+                .on;
+            updatemenus();
+         }
+      }
+      else if (c=='\335') aprsdecode_click.cmd = '\335';
       else if (c=='\236') {
          useri_reloadmap = 1;
          aprsdecode_click.cmd = ' ';
@@ -11233,6 +11852,7 @@ static void mouseleft(long mousx, long mousy)
          else if (knob==2UL) aprsdecode_click.cmd = '8';
          else if (knob==3UL) aprsdecode_click.cmd = '9';
          else {
+            /*      ELSIF knob=4 THEN click.cmd:="6"; */
             useri_Setmap(knob-1UL);
             aprsdecode_click.cmd = ' ';
          }
@@ -11272,7 +11892,7 @@ static void mouseleft(long mousx, long mousy)
             reply();
          }
          else if (subknob==3UL) delmsgfifo();
-         else if (subknob==4UL) zoomtoitem();
+         else if (subknob==4UL) zoomtoitem(labs(useri_nextmsg));
          useri_refresh = 1;
       }
       else if (c=='\277') {
@@ -11299,7 +11919,9 @@ static void mouseleft(long mousx, long mousy)
             aprsdecode_click.cmdatt = '\006';
          }
          else if (subknob==6UL) {
-            if (useri_nextmsg==0L) useri_nextmsg = 1L;
+            if (useri_nextmsg==0L) {
+               useri_nextmsg = 1L;
+            }
             aprsdecode_click.cmd = ' ';
          }
          else if (subknob==7UL) {
@@ -11338,7 +11960,7 @@ static void mouseleft(long mousx, long mousy)
          useri_refresh = 1;
       }
       else if (c=='\267') {
-         configdelman((unsigned char)configedit, knob, menu->scroll);
+         configdelman((uint8_t)configedit, knob, menu->scroll);
       }
       else if (c=='\265') callfiltsetup(knob);
       else if (c=='\271') dorfcfg(knob, subknob);
@@ -11434,15 +12056,19 @@ static void mouseleft(long mousx, long mousy)
          if (subknob==0UL) setmarks(1, 1);
          else if (subknob==3UL) setmarks(0, 1);
          else if (subknob==1UL) {
-            aprsdecode_posinval(&aprsdecode_click.markpos);
+            aprsstr_posinval(&aprsdecode_click.markpos);
             aprsdecode_click.waysum = 0.0f;
-            aprsdecode_posinval(&aprsdecode_click.squerpos0);
+            aprsstr_posinval(&aprsdecode_click.squerpos0);
+            aprsstr_posinval(&aprsdecode_click.squerspos0);
          }
-         else aprsdecode_posinval(&aprsdecode_click.measurepos);
+         else aprsstr_posinval(&aprsdecode_click.measurepos);
          aprsdecode_click.cmd = ' ';
       }
       else if (c=='\301') mapadd();
-      else if (c=='\305') useri_helptext(0UL, 0UL, 0UL, 0UL, "index", 6ul);
+      else if (c=='\305') {
+         if (knob==1UL) startcheckvers();
+         else useri_helptext(0UL, 0UL, 0UL, 0UL, "index", 6ul);
+      }
       else if (c=='\306') useri_helptext(knob, subknob, potx, poty, "", 1ul);
       else if (c=='\223') managebeacon(menu->scroll, knob, subknob, 0);
       else if (c=='\213') dobeacon(menu->scroll, knob);
@@ -11470,7 +12096,8 @@ static void mouseleft(long mousx, long mousy)
 } /* end mouseleft() */
 
 
-extern void useri_keychar(char ch, char ispasted, char movecmd)
+extern void useri_keychar(char ch, char ispasted,
+                char movecmd)
 {
    /*  IF movecmd THEN click.cmd:=ch; RETURN END; */
    useri_killbubble();
@@ -11481,21 +12108,31 @@ extern void useri_keychar(char ch, char ispasted, char movecmd)
    if (ispasted) ch = 0;
    /*WrInt(ORD(ch), 1); WrStrLn("kbd"); */
    if (ch=='R') aprsdecode_click.cmd = '\022';
-   else if (ch=='\022') {
-      /*ELSIF ch=CURSPAGEUP THEN WrStrLn("cup"); */
-      /*ELSIF ch=CURSPAGEDOWN THEN WrStrLn("cdown"); */
-      ch = 0;
-   }
+   else if (ch=='\022') ch = 0;
    else if (ch=='\320') configman(0UL, &aprsdecode_click.cmd);
-   else if (((((((ch!='b' && ch!='m') && ch!='f') && ch!='u') && ch!='d')
-                && ch!='p') && ch!='s') && ch!='h') {
+   else if (ch=='r') {
+      /* toggle radio path */
+      configtogg(useri_fGEOPROFIL);
+      useri_sayonoff("Geoprofile", 11ul, useri_configon(useri_fGEOPROFIL));
+      aprsdecode_click.cmd = ' ';
+      useri_refresh = 1;
+   }
+   else if (ch=='X') {
+      /*  ELSIF (ch<>"b") & (ch<>"m") & (ch<>"f") & (ch<>"u") & (ch<>"d")
+                & (ch<>"p") */
+      /*  & (ch<>"s") & (ch<>"h") THEN click.cmd:=CAP(ch)
+                ELSE click.cmd:=ch END; */
+      aprsdecode_click.cmd = '\314';
+   }
+   else if (ch=='Y') aprsdecode_click.cmd = '\315';
+   else if (aprsstr_InStr("bcdfhmpsu", 10ul, (char *) &ch, 1u/1u)<0L) {
       aprsdecode_click.cmd = X2C_CAP(ch);
    }
    else aprsdecode_click.cmd = ch;
    if (aprsdecode_click.cmd=='>' || aprsdecode_click.cmd=='<') {
       if (aprsdecode_click.entries>0UL) {
          useri_killallmenus();
-         textinfo((unsigned long)(aprsdecode_click.cmd=='<'));
+         textinfo((uint32_t)(aprsdecode_click.cmd=='<'));
          aprsdecode_click.dryrun = 0;
          images(aprsdecode_click.table[aprsdecode_click.selected].opf, 0,
                 aprsdecode_click.graphset&0x280U);
@@ -11536,7 +12173,10 @@ extern void useri_keychar(char ch, char ispasted, char movecmd)
       useri_refresh = 1;
       aprsdecode_click.cmd = ' ';
    }
-   else if (aprsdecode_click.cmd=='F') findopl(0);
+   else if (aprsdecode_click.cmd=='F' || aprsdecode_click.cmd=='\006') {
+      findopl(0);
+   }
+   else if (aprsdecode_click.cmd=='C') showpoicategory(0);
    else if (aprsdecode_click.cmd=='u') {
       if (useri_listwin!='M') startmon(1);
       else closelist();
@@ -11547,19 +12187,17 @@ extern void useri_keychar(char ch, char ispasted, char movecmd)
    }
    else if (aprsdecode_click.cmd=='d') maploadtogg();
    else if (aprsdecode_click.cmd=='p') domap(11UL, 0UL);
-/*  ELSIF click.cmd="D" THEN domap(RESETTODEFAULT, 0); */
-/*  IF refresh THEN redrawpop(redrawimg) END; */
 } /* end keychar() */
 
 
-extern void useri_getstartxysize(long * newx, long * newy)
+extern void useri_getstartxysize(int32_t * newx, int32_t * newy)
 {
    *newx = useri_conf2int(useri_fXYSIZE, 0UL, 100L, 32000L, 600L);
-   *newy = useri_conf2int(useri_fXYSIZE, 1UL, 50L, 32000L, 400L);
+   *newy = useri_conf2int(useri_fXYSIZE, 1UL, 70L, 32000L, 400L);
 } /* end getstartxysize() */
 
 
-extern void useri_resizewin(long newx, long newy, char f11)
+extern void useri_resizewin(int32_t newx, int32_t newy, char f11)
 {
    if (f11) {
       if (useri_maximized) {
@@ -11568,14 +12206,18 @@ extern void useri_resizewin(long newx, long newy, char f11)
       }
       else useri_maximized = 1;
    }
-   if (redrawimg==0 || ((long)mainxs()!=newx || (long)useri_mainys()!=newy)) {
-      useri_newxsize = (unsigned long)newx;
-      useri_newysize = (unsigned long)newy;
+   if (redrawimg==0 || ((int32_t)mainxs()!=newx || (int32_t)
+                useri_mainys()!=newy)) {
+      useri_newxsize = (uint32_t)newx;
+      useri_newysize = (uint32_t)newy;
       if (useri_newxsize<100UL) useri_newxsize = 100UL;
       else if (useri_newxsize>32000UL) useri_newxsize = 32000UL;
-      if (useri_newysize<50UL) useri_newysize = 50UL;
+      if (useri_newysize<70UL) useri_newysize = 70UL;
       else if (useri_newysize>32000UL) useri_newysize = 32000UL;
-      if (f11) xosi_setxwinsize((long)useri_newxsize, (long)useri_newysize);
+      if (f11) {
+         xosi_setxwinsize((int32_t)useri_newxsize,
+                (int32_t)useri_newysize);
+      }
    }
 /*WrInt(newxsize, 10); WrInt(newysize, 10); WrStrLn(" newxy1"); */
 /*  refresh:=TRUE; */
@@ -11585,16 +12227,16 @@ extern void useri_resizewin(long newx, long newy, char f11)
 
 extern void useri_refreshwin(void)
 {
-   if (useri_newxsize==0UL) useri_redraw(redrawimg);
+   useri_redraw(redrawimg);
 } /* end refreshwin() */
 
 
-static void cpbytes(pLISTLINE bi, char test, unsigned long * cnt)
+static void cpbytes(pLISTLINE bi, char test, uint32_t * cnt)
 {
-   unsigned long end;
-   unsigned long start;
-   unsigned long j;
-   unsigned long i;
+   uint32_t end;
+   uint32_t start;
+   uint32_t j;
+   uint32_t i;
    while (bi) {
       end = bi->endcp;
       i = 0UL;
@@ -11602,7 +12244,7 @@ static void cpbytes(pLISTLINE bi, char test, unsigned long * cnt)
       while (i<end && i<bi->len) {
          if (bi->text[i]==0) end = j;
          else if (bi->text[i]=='\375') end += 2UL;
-         else if ((unsigned char)bi->text[i]>=(unsigned char)'\201') ++end;
+         else if ((uint8_t)bi->text[i]>=(uint8_t)'\201') ++end;
          ++i;
       }
       start = bi->startcp;
@@ -11611,7 +12253,7 @@ static void cpbytes(pLISTLINE bi, char test, unsigned long * cnt)
       while (i<start && i<end) {
          if (bi->text[i]==0) start = j;
          else if (bi->text[i]=='\375') start -= 2UL;
-         else if ((unsigned char)bi->text[i]>=(unsigned char)'\201') ++start;
+         else if ((uint8_t)bi->text[i]>=(uint8_t)'\201') ++start;
          ++i;
       }
       /*WrInt(bi^.startcp, 6);WrInt(bi^.endcp, 6);  WrInt(start, 6);
@@ -11627,7 +12269,7 @@ static void cpbytes(pLISTLINE bi, char test, unsigned long * cnt)
          }
          while (end>start) {
             --end;
-            if ((unsigned char)bi->text[end]<(unsigned char)'\201') {
+            if ((uint8_t)bi->text[end]<(uint8_t)'\201') {
                if (test) ++*cnt;
                else {
                   --*cnt;
@@ -11644,7 +12286,7 @@ static void cpbytes(pLISTLINE bi, char test, unsigned long * cnt)
 static void copypastelist(void)
 {
    pLISTLINE bb;
-   unsigned long len;
+   uint32_t len;
    if (pullmenuwhat=='C') {
       bb = 0;
       if (useri_listwin=='M') bb = monbuffer.listlines;
@@ -11671,36 +12313,37 @@ extern void useri_pulloff(void)
 } /* end pulloff() */
 
 
-static void limmouse(long * x, long * y)
+static void limmouse(int32_t * x, int32_t * y)
 {
    if (*x<0L) *x = 0L;
-   else if (*x>(long)mainxs()) *x = (long)mainxs();
+   else if (*x>(int32_t)mainxs()) *x = (int32_t)mainxs();
    if (*y<0L) *y = 0L;
-   else if (*y>(long)useri_mainys()) *y = (long)useri_mainys();
+   else if (*y>(int32_t)useri_mainys()) *y = (int32_t)useri_mainys();
 } /* end limmouse() */
 
 
-static void startpull(long x, long y, char middlbutt)
+static void startpull(int32_t x, int32_t y, char middlbutt)
 {
    pMENU pm;
-   unsigned long posy;
-   unsigned long posx;
-   unsigned long subknob;
-   unsigned long knob;
+   uint32_t posy;
+   uint32_t posx;
+   uint32_t subknob;
+   uint32_t knob;
    useri_killbubble();
-   whichmenu((unsigned long)x, (unsigned long)y, &pm, &knob, &subknob, &posx,
-                 &posy);
-   if ((pm && (unsigned long)pm->pullconf>0UL)
+   whichmenu((uint32_t)x, (uint32_t)y, &pm, &knob, &subknob, &posx,
+                &posy);
+   if ((pm && (uint32_t)pm->pullconf>0UL)
                 && (middlbutt || posy<=pm->pullyknob)) {
-      useri_saveXYtocfg(pm->pullconf, (long)pm->nowx, (long)pm->nowy);
-      pullmenuwid = (long)pm->wid;
+      useri_saveXYtocfg(pm->pullconf, (int32_t)pm->nowx,
+                (int32_t)pm->nowy);
+      pullmenuwid = (int32_t)pm->wid;
       pullmenux = x;
       pullmenuy = y;
       pullmenuwhat = WhatPull(pm, posx, posy);
    }
    /*  findpullmenu(x, y); */
    if (pm==0 || middlbutt && pullmenuwid==0L) {
-      maptool_pullmap(x, (long)useri_mainys()-y, 1); /* start pulling */
+      maptool_pullmap(x, (int32_t)useri_mainys()-y, 1); /* start pulling */
    }
    else if (pullmenuwid) {
       /*sethand(cPULL4);*/
@@ -11709,7 +12352,7 @@ static void startpull(long x, long y, char middlbutt)
 } /* end startpull() */
 
 
-static void setzoom(long x1, long y1)
+static void setzoom(int32_t x1, int32_t y1)
 {
    aprsdecode_click.zoomtox = x1;
    aprsdecode_click.zoomtoy = y1;
@@ -11718,27 +12361,27 @@ static void setzoom(long x1, long y1)
 } /* end setzoom() */
 
 
-static void setclick(long x, long y)
+static void setclick(int32_t x, int32_t y)
 {
    limmouse(&x, &y);
    aprsdecode_click.x = x;
-   aprsdecode_click.y = (long)useri_mainys()-y;
+   aprsdecode_click.y = (int32_t)useri_mainys()-y;
 } /* end setclick() */
 
 
-extern void useri_mouseleftdown(long x, long y)
+extern void useri_mouseleftdown(int32_t x, int32_t y)
 {
    setclick(x, y);
    if (xosi_pulling) useri_pulloff();
    leftbutton = 1;
    xosi_zooming = 0;
-   if (clampedline && hilitemenu((unsigned long)x, (unsigned long)y, 0, 0)) {
+   if (clampedline && hilitemenu((uint32_t)x, (uint32_t)y, 0, 0)) {
       useri_refresh = 1;
    }
 } /* end mouseleftdown() */
 
 
-extern void useri_mousemiddle(long x, long y)
+extern void useri_mousemiddle(int32_t x, int32_t y)
 {
    clampedline = 0UL;
    limmouse(&x, &y);
@@ -11746,7 +12389,7 @@ extern void useri_mousemiddle(long x, long y)
 } /* end mousemiddle() */
 
 
-extern void useri_mouserightdown(long x, long y)
+extern void useri_mouserightdown(int32_t x, int32_t y)
 {
    setclick(x, y);
    if (xosi_pulling) useri_pulloff();
@@ -11755,34 +12398,36 @@ extern void useri_mouserightdown(long x, long y)
 } /* end mouserightdown() */
 
 
-extern void useri_mousemove(long x, long y)
+extern void useri_mousemove(int32_t x, int32_t y)
 {
-   long mvd;
+   int32_t mvd;
    limmouse(&x, &y);
    if (!xosi_pulling) xosi_sethand(xosi_cOFF);
    if (xosi_pulling) {
       /* goon pulling */
       if (pullmenuwid) {
-         Pullmenu((unsigned long)pullmenuwid, x-pullmenux, y-pullmenuy);
+         Pullmenu((uint32_t)pullmenuwid, x-pullmenux, y-pullmenuy);
          pullmenux = x;
          pullmenuy = y;
       }
       else {
-         maptool_pullmap(x, (long)useri_mainys()-y, 0);
+         maptool_pullmap(x, (int32_t)useri_mainys()-y, 0);
          aprsdecode_click.cmd = ' '; /* start makeimage */
       }
    }
-   else if (xosi_zooming) setzoom(x, (long)useri_mainys()-y);
+   else if (xosi_zooming) setzoom(x, (int32_t)useri_mainys()-y);
    else if (leftbutton || rightbutton) {
       if (xosi_Shift || rightbutton) mvd = 5L;
       else if (leftbutton) mvd = 2L;
-      if (labs(x-aprsdecode_click.x)>mvd || labs(((long)useri_mainys()-y)
-                -aprsdecode_click.y)>mvd) {
+      if (labs(x-aprsdecode_click.x)>mvd || labs(((int32_t)useri_mainys()
+                -y)-aprsdecode_click.y)>mvd) {
          /* moved a little */
-         if (xosi_Shift || rightbutton) setzoom(x, (long)useri_mainys()-y);
+         if (xosi_Shift || rightbutton) {
+            setzoom(x, (int32_t)useri_mainys()-y);
+         }
          else if (leftbutton) {
             startpull(aprsdecode_click.x,
-                (long)useri_mainys()-aprsdecode_click.y, 0);
+                (int32_t)useri_mainys()-aprsdecode_click.y, 0);
          }
       }
    }
@@ -11793,8 +12438,8 @@ extern void useri_mousemove(long x, long y)
       if (hintmouse.x==0L) hintmouse = useri_xmouse;
       if (labs(hintmouse.x-useri_xmouse.x)+labs(hintmouse.y-useri_xmouse.y)
                 >8L) closehint();
-      if (clampedline==0UL && hilitemenu((unsigned long)x, (unsigned long)y,
-                0, 0)) useri_refresh = 1;
+      if (clampedline==0UL && hilitemenu((uint32_t)x, (uint32_t)y, 0,
+                0)) useri_refresh = 1;
       if (hinttime!=aprsdecode_realtime && useri_configon(useri_fMOUSELOC)) {
          mouseshowcnt = 1UL;
       }
@@ -11808,7 +12453,8 @@ extern void useri_mouserelease(void)
    if (xosi_pulling) useri_pulloff();
    else if (xosi_zooming) aprsdecode_click.cmd = '\307';
    else if (leftbutton) {
-      mouseleft(aprsdecode_click.x, (long)useri_mainys()-aprsdecode_click.y);
+      mouseleft(aprsdecode_click.x,
+                (int32_t)useri_mainys()-aprsdecode_click.y);
    }
    else if (rightbutton) {
       useri_killbubble();
@@ -11823,7 +12469,7 @@ extern void useri_mouserelease(void)
 } /* end mouserelease() */
 
 
-static void showexitcode(char name[], unsigned long name_len, long c)
+static void showexitcode(char name[], uint32_t name_len, int32_t c)
 {
    char h[100];
    char s[100];
@@ -11836,7 +12482,7 @@ static void showexitcode(char name[], unsigned long name_len, long c)
 } /* end showexitcode() */
 
 
-static void checkserial(struct xosi_PROCESSHANDLE * pid, unsigned char cfg)
+static void checkserial(struct xosi_PROCESSHANDLE * pid, uint8_t cfg)
 {
    if (pid->runs) {
       xosi_CheckProg(pid);
@@ -11855,8 +12501,7 @@ extern void useri_timerevent(void)
    if (mouseshowcnt>0UL) {
       --mouseshowcnt;
       if (mouseshowcnt==0UL) {
-         mouseshow((unsigned long)useri_xmouse.x,
-                (unsigned long)useri_xmouse.y);
+         mouseshow((uint32_t)useri_xmouse.x, (uint32_t)useri_xmouse.y);
          useri_refresh = 1;
       }
    }
@@ -11877,12 +12522,6 @@ extern void useri_timerevent(void)
    checkserial(&aprsdecode_serialpid2, useri_fSERIALTASK2);
    if (useri_refresh) useri_refreshwin();
 } /* end timerevent() */
-
-
-extern void useri_Quit(void)
-{
-   aprsdecode_click.cmd = 'Q';
-} /* end Quit() */
 
 
 extern void useri_wrheap(void)
@@ -11938,6 +12577,7 @@ extern void useri_initmenus(void)
    hoveropen = 0;
    /*  clampedline:=0; */
    /*  FILL(ADR(menupullpos), 0C, SIZE(menupullpos)); */
+   aprsdecode_checkversion.runs = 0;
    useri_Setmap(0UL);
 } /* end initmenus() */
 
@@ -11947,12 +12587,14 @@ extern void useri_BEGIN(void)
    static int useri_init = 0;
    if (useri_init) return;
    useri_init = 1;
+   if (sizeof(sMENULINES)!=8) X2C_ASSERT(0);
+   libsrtm_BEGIN();
    aprstat_BEGIN();
    aprstext_BEGIN();
+   aprspos_BEGIN();
    xosi_BEGIN();
    osi_BEGIN();
    maptool_BEGIN();
-   aprspos_BEGIN();
    aprsstr_BEGIN();
    aprsdecode_BEGIN();
 }

@@ -1328,6 +1328,153 @@
 + Hamnet Symbol in symbols.png
 
 
+15.3.2017 (Ver 0.64)
+
++ Trackfilter geht bei mehr als 15000 Wegpunkten nimmer gegen Rechenzeit unendlich.
++ Trackfilter wird auch mit den kleinen Zappeleien bei Verzoegerungen unter 1Min fertig.
++ "Find Item Message" zeigt auch bei mehreren solchen Msgs die dazu passende Position. 
+
+
+
+
+5.4.2017 (Ver 0.65)
+
++ Rotes Fehlermeldung-Popupfenster groesser und umfangreicher bei der Baken Eingabe.
++ mit []-Tasten Zeit aendern wie lang Dinge auf der Karte sichtbar bleiben.
+
+
+
+25.5.2017 (Ver 0.66)
+
++ Kontrast der Symbole verbessert.
++ Fenster zu klicken sollte bei vielen Linux-Fenstermachern wieder geeordnet abstellen.
++ Linux 64bit Version.
+
+
+5.7.2017 (Ver 0.67)
+
++ langen Locator suchen korrigiert und Kleinfeld Darstellung
++ udpflex (linux) tcpkiss server
+
+
+
+29.9.2017 (Ver 0.69)
+
++ Helligkeitskorrektur (Tools > Add Maptypes) als Gamma Werte statt +- Helligkeit.
+  Bei Bildschirm-Gamma (Config > Brightness) 2.2 entspricht 0.45 original und 0.3
+  etwa dem bisherigen -128. Die Werte werden nun bei Kontextumschaltung mit TAB
+  mit dem Kartentyp gespeichert.
+
+
+
+01.12.2017 (Ver 0.70)
+
++ Kartentypen mit Gamma-Korrektur statt Helligkeitskorrektur. (Tools > Add Maptypes)
+  solang ein hellikeitswert konfiguriert ist, wird default 0.25 angewendet.
+  (Sinn der Sache: Sat Map von Sentinel2)
+
++ Eingestellte Karten Helligkeiten werden individuell fuer Kartentype gespeichert.
+  (Sat Maps sind bei 100% ok, OSM karten eher bei 20 bis 40%)
+
++ "6" schaltet alle aktiven Kartentypen im kreisrum durch.
+
++ Font von 7x6 bis 24x12 und zoombare Symbole 16 bis 32 aus symbol file 16 bis 48
+  Track und Wegpunkte werden mit angepasst.
+  (Zweck: hochaufloesende Bildschirme)
+
++ Neue Fontfiles und Symbolfile mit teiltransparenten Symbolen
+  (wird noch verschoenbessert ...)
+  beim Symbol Zoom wird erst versucht ein zur groesse passendes symbolsXX.png zu laden
+  falls nicht vorhanden wird "symbols.png" gezoomt.
+
++ Weicher Alpha-Kanal (Transparenz) bei den Symbolen (win: neue "pngm.dll")
+
+
+09.12.2017 (Ver 0.71)
+
++ win: jpegm.dll  damit werden auch OSM Karten im jpeg Format gelesen
+  (auch mit Filename *.png).
+
++ win: getosm.exe (dank an oe5krn) neu mit "getosm.org" start Datei im zip und 
+  ohne "getosm.ini" damit bei Programmupdate OSM-urls nimmer ueberschrieben werden.
+
++ Urls mit .jpg hinten koennen eingegeben werden.
+
++ Konvertierung auf png kann abgeschaltet bleiben, spart Plattenspeicher.
+
+
+
+12.02.2018 (Ver 0.72)
+
++ Logfile laden (besonders mit 270000 Baken Track drin) verschnellert.
+ 
++ Symbole-Zoom verbessert und % Eingabe als 3. Parameter bei Config>Font>Fontsize
+  fuer Symbolgroesse/Texthoehe Verhaeltnis
+
+
+
+
+15.03.2018 (Ver 0.72)
+
++ Linux 64bit Copy/Paste Absturz behoben (hoffentlich)
+
++ Refraction Parameter wirkt auch bei Radiolink Ausleuchtung
+
+
+
+
+12.07.2018 (Ver 0.74)
+
++ Neue-Version-Check Funktion mit shell/BAT script falls wer einen dazu passenden
+  www-server baut.
+
++ Radiowellen Ausbreitungsberechnung um Streckendaempfung und Antennendiagramme
+  aus Hersteller-Files erweitert.
+
+
+
+07.10.2018 (Ver 0.75)
+
++ Fehler beim Logfile importieren und nach Uhrzeit sortieren behoben.
+ 
+
+12.10.2018 (Ver 0.75)
+
++ poi.txt aus Hamnet-db und Foto-webcam Daten aktualisiert.
++ "P" rechnet mit Refrac (0.13 Licht, 0.25 Funk)
+
+
+17.11.2018 (Ver 0.76)
+
++ Poi-Files mit beliebigen Namen in osm/poi/
+
++ Darstellung eines Info-Fensters bei Maus nahe einem Poi sofern Info enthalten.
+
++ Auswahlmenue "C" oder "Tools/Select Data/Show POI" zum Zeichnen von
+  einstellbaren Symbolen eines oder mehrere Poi Files.
+  "l" (= kleines "L") schaltet Labels ein/aus.
+  Dazu Text-Filter im Namen oder Infofeld zum eingrenzen der Auswahl mit "*" und "?"
+
++ Marker setzen mit Fangen der Position des nahen Poi mit "X" und "Y", ohne Fangen "x" "y".
+
+
+
+24.7.2019 (Ver 0.77)
+
++ Tagged srtm (wasser/wald/urban) und damit Gelaendeschnitt mit/ohne wald
++ Message mit ziel "RAW" zum erzeugen einer handgekloeppelten nicht-standard
+  Bake oder "general query"
+
+
+
+
+
+
+
+
+
+
+
 
 
 

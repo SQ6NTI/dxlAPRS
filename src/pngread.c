@@ -1,7 +1,8 @@
 
 #include <png.h>
+#include <stdint.h>
 
-int readpng(char *fn, png_bytep *row_pointers, int *maxx, int *maxy, int *maxxbyte)  /* file is already open */
+int32_t readpng(char *fn, png_bytep *row_pointers, int32_t *maxx, int32_t *maxy, int32_t *maxxbyte)  /* file is already open */
 {
    png_structp png_ptr;
    png_infop info_ptr;
@@ -64,9 +65,20 @@ int readpng(char *fn, png_bytep *row_pointers, int *maxx, int *maxy, int *maxxby
    /* tell libpng to strip 16 bit/color files down to 8 bits/color */
    png_set_strip_16(png_ptr);
 
-   /* strip alpha bytes from the input data without combining with th
-    * background (not recommended) */
-   png_set_strip_alpha(png_ptr);
+
+   /* test if with alpha channel */
+   if (*maxxbyte >= *maxx*4)
+   {
+     if(color_type == PNG_COLOR_TYPE_RGB ||
+       color_type == PNG_COLOR_TYPE_GRAY ||
+       color_type == PNG_COLOR_TYPE_PALETTE)
+       png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
+   }
+   else
+     /* strip alpha bytes from the input data without combining with th
+      * background (not recommended) */
+     png_set_strip_alpha(png_ptr);
+
 
    /* extract multiple pixels with bit depths of 1, 2, and 4 from a single
     * byte into separate bytes (useful for paletted and grayscale images).

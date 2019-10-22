@@ -34,9 +34,9 @@
 
 #define udphub_MINLEN 17
 
-static unsigned long udphub_POLYNOM = 0x8408UL;
+static uint32_t udphub_POLYNOM = 0x8408UL;
 
-static unsigned long udphub_CRCINIT = 0xFFFFUL;
+static uint32_t udphub_CRCINIT = 0xFFFFUL;
 
 #define udphub_SOURCECALL 7
 
@@ -62,8 +62,8 @@ typedef char RAWCALL[7];
 
 
 struct TIMEVAL {
-   long tvsec;
-   long tvusec;
+   int32_t tvsec;
+   int32_t tvusec;
 };
 
 struct USER;
@@ -74,20 +74,23 @@ typedef struct USER * pUSER;
 struct USER {
    pUSER next;
    RAWCALL call;
-   unsigned long uip;
-   unsigned long dport;
+   uint32_t uip;
+   uint32_t dport;
    char datagot; /* not send same data twice to same ip/port */
    char bcin; /* broadcast in accept */
    char bcout; /* broadcast out allowed */
    char willall; /* like host send all to */
    char nopurge; /* entry from file no purge */
    char nospoof; /* not overwrite ip:port */
-   unsigned long htime;
+   char allssid; /* fits with any ssid */
+   uint32_t htime;
+   uint32_t framesin;
+   uint32_t framesout;
 };
 
-static unsigned char CRCL[256];
+static uint8_t CRCL[256];
 
-static unsigned char CRCH[256];
+static uint8_t CRCH[256];
 
 static char noinf;
 
@@ -106,38 +109,52 @@ static char show;
 static char checkdigiip;
 
 static pUSER users;
+/*  alllifetime,                                       (* time for all/unknown ssid *) */
 
-static unsigned long alllifetime;
+static uint32_t systime;
 
-static unsigned long systime;
+static uint32_t lifetime;
 
-/* time for all/unknown ssid */
-static unsigned long lifetime;
+static uint32_t uptime;
 
-static unsigned long touserport;
+static uint32_t touserport;
 
-static unsigned long todigiport;
+static uint32_t todigiport;
 
-static unsigned long digiip;
+static uint32_t digiip;
 
-static long digisock;
+static int32_t digisock;
 
-static long usersock;
+static int32_t usersock;
 
-static unsigned long maxentries;
+static uint32_t maxentries;
 
 static char initfn[1025];
 
 static char wrfn[1025];
 
 static RAWCALL broadcastdest;
-/*
-PROCEDURE ["C"] / select(n: INTEGER; readfds: ADDRESS; writefds: ADDRESS;
-                         exceptfds: ADDRESS; timeout: ADDRESS) : INTEGER;
-*/
+
+static uint32_t framecnt;
+
+static uint32_t dupecnt;
+
+static uint32_t dupewp;
+
+static uint32_t maxdupetime;
+
+struct _0;
 
 
-static void Err(const char text[], unsigned long text_len)
+struct _0 {
+   uint16_t crc;
+   uint32_t time0;
+};
+
+static struct _0 dupetab[64];
+
+
+static void Err(const char text[], uint32_t text_len)
 {
    osi_WrStr("udphub: ", 9ul);
    osi_WrStr(text, text_len);
@@ -150,19 +167,17 @@ static void Err(const char text[], unsigned long text_len)
 
 static void Gencrctab(void)
 {
-   unsigned long c;
-   unsigned long crc;
-   unsigned long i;
+   uint32_t c;
+   uint32_t crc;
+   uint32_t i;
    for (c = 0UL; c<=255UL; c++) {
       crc = 255UL-c;
       for (i = 0UL; i<=7UL; i++) {
-         if ((crc&1)) {
-            crc = (unsigned long)((unsigned long)(crc>>1)^0x8408UL);
-         }
+         if ((crc&1)) crc = (uint32_t)((uint32_t)(crc>>1)^0x8408UL);
          else crc = crc>>1;
       } /* end for */
-      CRCL[c] = (unsigned char)crc;
-      CRCH[c] = (unsigned char)(255UL-(crc>>8));
+      CRCL[c] = (uint8_t)crc;
+      CRCH[c] = (uint8_t)(255UL-(crc>>8));
    } /* end for */
 } /* end Gencrctab() */
 
@@ -170,19 +185,17 @@ static void Gencrctab(void)
 static void WCh(char c)
 {
    if (c!='\015') {
-      if ((unsigned char)c<' ' || (unsigned char)c>='\177') {
-         osi_WrStr(".", 2ul);
-      }
+      if ((uint8_t)c<' ' || (uint8_t)c>='\177') osi_WrStr(".", 2ul);
       else osi_WrStr((char *) &c, 1u/1u);
    }
 } /* end WCh() */
 
 
-static void ShowCall(char f[], unsigned long f_len, unsigned long pos)
+static void ShowCall(char f[], uint32_t f_len, uint32_t pos)
 {
-   unsigned long e;
-   unsigned long i;
-   unsigned long tmp;
+   uint32_t e;
+   uint32_t i;
+   uint32_t tmp;
    char tmp0;
    e = pos;
    tmp = pos+5UL;
@@ -194,45 +207,46 @@ static void ShowCall(char f[], unsigned long f_len, unsigned long pos)
    tmp = e;
    i = pos;
    if (i<=tmp) for (;; i++) {
-      WCh((char)((unsigned long)(unsigned char)f[i]>>1));
+      WCh((char)((uint32_t)(uint8_t)f[i]>>1));
       if (i==tmp) break;
    } /* end for */
-   i = (unsigned long)(unsigned char)f[pos+6UL]>>1&15UL;
+   i = (uint32_t)(uint8_t)f[pos+6UL]>>1&15UL;
    if (i) {
       osi_WrStr("-", 2ul);
       if (i>=10UL) {
-         osi_WrStr((char *)(tmp0 = (char)(i/10UL+48UL),&tmp0), 1u/1u);
+         osi_WrStr((char *)(tmp0 = (char)(i/10UL+48UL),&tmp0),
+                1u/1u);
       }
       osi_WrStr((char *)(tmp0 = (char)(i%10UL+48UL),&tmp0), 1u/1u);
    }
 } /* end ShowCall() */
 
-static unsigned long udphub_UA = 0x63UL;
+static uint32_t udphub_UA = 0x63UL;
 
-static unsigned long udphub_DM = 0xFUL;
+static uint32_t udphub_DM = 0xFUL;
 
-static unsigned long udphub_SABM = 0x2FUL;
+static uint32_t udphub_SABM = 0x2FUL;
 
-static unsigned long udphub_DISC = 0x43UL;
+static uint32_t udphub_DISC = 0x43UL;
 
-static unsigned long udphub_FRMR = 0x87UL;
+static uint32_t udphub_FRMR = 0x87UL;
 
-static unsigned long udphub_UI = 0x3UL;
+static uint32_t udphub_UI = 0x3UL;
 
-static unsigned long udphub_RR = 0x1UL;
+static uint32_t udphub_RR = 0x1UL;
 
-static unsigned long udphub_REJ = 0x9UL;
+static uint32_t udphub_REJ = 0x9UL;
 
-static unsigned long udphub_RNR = 0x5UL;
+static uint32_t udphub_RNR = 0x5UL;
 
 
-static void Showctl(unsigned long com, unsigned long cmd)
+static void Showctl(uint32_t com, uint32_t cmd)
 {
-   unsigned long cm;
+   uint32_t cm;
    char PF[4];
    char tmp;
    osi_WrStr(" ctl ", 6ul);
-   cm = (unsigned long)cmd&~0x10UL;
+   cm = (uint32_t)cmd&~0x10UL;
    if ((cm&0xFUL)==0x1UL) {
       osi_WrStr("RR", 3ul);
       osi_WrStr((char *)(tmp = (char)(48UL+(cmd>>5)),&tmp), 1u/1u);
@@ -248,7 +262,8 @@ static void Showctl(unsigned long com, unsigned long cmd)
    else if ((cm&0x1UL)==0UL) {
       osi_WrStr("I", 2ul);
       osi_WrStr((char *)(tmp = (char)(48UL+(cmd>>5)),&tmp), 1u/1u);
-      osi_WrStr((char *)(tmp = (char)(48UL+(cmd>>1&7UL)),&tmp), 1u/1u);
+      osi_WrStr((char *)(tmp = (char)(48UL+(cmd>>1&7UL)),&tmp),
+                1u/1u);
    }
    else if (cm==0x3UL) osi_WrStr("UI", 3ul);
    else if (cm==0xFUL) osi_WrStr("DM", 3ul);
@@ -256,24 +271,24 @@ static void Showctl(unsigned long com, unsigned long cmd)
    else if (cm==0x43UL) osi_WrStr("DISC", 5ul);
    else if (cm==0x63UL) osi_WrStr("UA", 3ul);
    else if (cm==0x87UL) osi_WrStr("FRMR", 5ul);
-   else osic_WrHex(cmd, 1UL);
+   else osi_WrHex(cmd, 1UL);
    strncpy(PF,"v^-+",4u);
    if (com==0UL || com==3UL) osi_WrStr("v1", 3ul);
    else {
-      osi_WrStr((char *) &PF[(com&1UL)+2UL*(unsigned long)
-                ((0x10UL & (unsigned long)cmd)!=0)], 1u/1u);
+      osi_WrStr((char *) &PF[(com&1UL)+2UL*(uint32_t)
+                ((0x10UL & (uint32_t)cmd)!=0)], 1u/1u);
    }
 } /* end Showctl() */
 
 
-static void ShowFrame(char f[], unsigned long f_len, unsigned long len,
+static void ShowFrame(char f[], uint32_t f_len, uint32_t len,
                 char noinfo)
 {
-   unsigned long i;
+   uint32_t i;
    char d;
    char v;
    i = 0UL;
-   while (!((unsigned long)(unsigned char)f[i]&1)) {
+   while (!((uint32_t)(uint8_t)f[i]&1)) {
       ++i;
       if (i>len) return;
    }
@@ -286,25 +301,26 @@ static void ShowFrame(char f[], unsigned long f_len, unsigned long len,
    ShowCall(f, f_len, 0UL);
    i = 14UL;
    v = 1;
-   while (i+6UL<len && !((unsigned long)(unsigned char)f[i-1UL]&1)) {
+   while (i+6UL<len && !((uint32_t)(uint8_t)f[i-1UL]&1)) {
       if (v) {
          osi_WrStr(" via", 5ul);
          v = 0;
       }
       osi_WrStr(" ", 2ul);
       ShowCall(f, f_len, i);
-      if ((unsigned long)(unsigned char)f[i+6UL]>=128UL && (((unsigned long)
-                (unsigned char)f[i+6UL]&1) || (unsigned long)(unsigned char)
-                f[i+13UL]<128UL)) osi_WrStr("*", 2ul);
+      if ((uint32_t)(uint8_t)f[i+6UL]>=128UL && (((uint32_t)(uint8_t)
+                f[i+6UL]&1) || (uint32_t)(uint8_t)f[i+13UL]<128UL)) {
+         osi_WrStr("*", 2ul);
+      }
       i += 7UL;
    }
-   Showctl((unsigned long)((0x80U & (unsigned char)(unsigned char)f[6UL])!=0)
-                +2UL*(unsigned long)((0x80U & (unsigned char)(unsigned char)
-                f[13UL])!=0), (unsigned long)(unsigned char)f[i]);
+   Showctl((uint32_t)((0x80U & (uint8_t)(uint8_t)f[6UL])!=0)
+                +2UL*(uint32_t)((0x80U & (uint8_t)(uint8_t)f[13UL])!=0)
+                , (uint32_t)(uint8_t)f[i]);
    ++i;
    if (i<len) {
       osi_WrStr(" pid ", 6ul);
-      osic_WrHex((unsigned long)(unsigned char)f[i], 1UL);
+      osi_WrHex((uint32_t)(uint8_t)f[i], 1UL);
    }
    ++i;
    osic_WrLn();
@@ -326,19 +342,20 @@ static void ShowFrame(char f[], unsigned long f_len, unsigned long len,
 } /* end ShowFrame() */
 
 
-static char testCRC(char frame[], unsigned long frame_len, long size)
+static char testCRC(char frame[], uint32_t frame_len,
+                int32_t size)
 {
-   unsigned char h;
-   unsigned char l;
-   unsigned char b;
-   long i;
-   long tmp;
+   uint8_t h;
+   uint8_t l;
+   uint8_t b;
+   int32_t i;
+   int32_t tmp;
    l = 0U;
    h = 0U;
    tmp = size-3L;
    i = 0L;
    if (i<=tmp) for (;; i++) {
-      b = (unsigned char)((unsigned char)(unsigned char)frame[i]^l);
+      b = (uint8_t)((uint8_t)(uint8_t)frame[i]^l);
       l = CRCL[b]^h;
       h = CRCH[b];
       if (i==tmp) break;
@@ -346,60 +363,15 @@ static char testCRC(char frame[], unsigned long frame_len, long size)
    return frame[size-2L]==(char)l && frame[size-1L]==(char)h;
 } /* end testCRC() */
 
-/*
-PROCEDURE GetIp1(h:ARRAY OF CHAR; VAR ip:IPNUM; VAR dp:UDPPORT):INTEGER;
-CONST PORTSEP=":";
-      DEFAULTIP=7F000001H;
 
-VAR i, p, n:CARDINAL;
-    ok:BOOLEAN;
-BEGIN
-  p:=0;
-  h[HIGH(h)]:=0C;
-  ip:=0;
-  FOR i:=0 TO 4 DO
-    IF (i>=3) OR (h[0]<>PORTSEP) THEN
-      n:=0;
-      ok:=FALSE;
-      WHILE (h[p]>="0") & (h[p]<="9") DO
-        ok:=TRUE;
-        n:=n*10+ORD(h[p])-ORD("0");
-        INC(p);
-      END;
-      IF NOT ok THEN RETURN -1 END;
-
-    END;
-    IF i<3 THEN
-      IF h[0]<>PORTSEP THEN
-        IF (h[p]<>".") OR (n>255) THEN RETURN -1 END;
-
-        ip:=ip*256+n;
-      END;
-
-    ELSIF i=3 THEN
-      IF h[0]<>PORTSEP THEN
-        ip:=ip*256+n;
-        IF (h[p]<>PORTSEP) OR (n>255) THEN RETURN -1 END;
-
-      ELSE p:=0; ip:=DEFAULTIP END;
-
-    ELSIF n>65535 THEN RETURN -1 END;
-
-    dp:=n;
-    INC(p);
-  END;
-  RETURN 0
-END GetIp1;
-*/
-
-static long GetIp1(char h[], unsigned long h_len, unsigned long * ip,
-                unsigned long * port)
+static int32_t GetIp1(char h[], uint32_t h_len, uint32_t * ip,
+                uint32_t * port)
 {
-   unsigned long p;
-   unsigned long n;
-   unsigned long i;
+   uint32_t p;
+   uint32_t n;
+   uint32_t i;
    char ok0;
-   long GetIp1_ret;
+   int32_t GetIp1_ret;
    X2C_PCOPY((void **)&h,h_len);
    p = 0UL;
    h[h_len-1] = 0;
@@ -407,9 +379,9 @@ static long GetIp1(char h[], unsigned long h_len, unsigned long * ip,
    for (i = 0UL; i<=4UL; i++) {
       n = 0UL;
       ok0 = 0;
-      while ((unsigned char)h[p]>='0' && (unsigned char)h[p]<='9') {
+      while ((uint8_t)h[p]>='0' && (uint8_t)h[p]<='9') {
          ok0 = 1;
-         n = (n*10UL+(unsigned long)(unsigned char)h[p])-48UL;
+         n = (n*10UL+(uint32_t)(uint8_t)h[p])-48UL;
          ++p;
       }
       if (!ok0) {
@@ -444,13 +416,13 @@ static long GetIp1(char h[], unsigned long h_len, unsigned long * ip,
 } /* end GetIp1() */
 
 
-static long getudp(long fd, char buf[], unsigned long buf_len,
-                unsigned long * fromip0, unsigned long * fromport,
+static int32_t getudp(int32_t fd, char buf[], uint32_t buf_len,
+                uint32_t * fromip0, uint32_t * fromport,
                 char checkip)
 {
-   unsigned long ip;
-   long len;
-   len = udpreceive(fd, buf, (long)(buf_len), fromport, &ip);
+   uint32_t ip;
+   int32_t len;
+   len = udpreceive(fd, buf, (int32_t)(buf_len), fromport, &ip);
    if (len<2L || !testCRC(buf, buf_len, len)) {
       if (show) osi_WrStrLn(" axudp crc error ", 18ul);
       return -1L;
@@ -461,14 +433,15 @@ static long getudp(long fd, char buf[], unsigned long buf_len,
 } /* end getudp() */
 
 
-static char Call2Str(const char r[], unsigned long r_len, char t[],
-                unsigned long t_len, unsigned long pos, unsigned long * len)
+static char Call2Str(const char r[], uint32_t r_len,
+                char t[], uint32_t t_len, uint32_t pos,
+                uint32_t * len, char zerossid)
 {
-   unsigned long ssid;
-   unsigned long e;
-   unsigned long i;
+   uint32_t ssid;
+   uint32_t e;
+   uint32_t i;
    char c;
-   unsigned long tmp;
+   uint32_t tmp;
    e = pos;
    tmp = pos+5UL;
    i = pos;
@@ -479,8 +452,8 @@ static char Call2Str(const char r[], unsigned long r_len, char t[],
    tmp = e;
    i = pos;
    if (i<=tmp) for (;; i++) {
-      c = (char)((unsigned long)(unsigned char)r[i]>>1);
-      if ((unsigned char)c<=' ') {
+      c = (char)((uint32_t)(uint8_t)r[i]>>1);
+      if ((uint8_t)c<=' ') {
          t[*len] = 0;
          *len = 0UL;
          return 0;
@@ -489,8 +462,8 @@ static char Call2Str(const char r[], unsigned long r_len, char t[],
       ++*len;
       if (i==tmp) break;
    } /* end for */
-   ssid = (unsigned long)(unsigned char)r[pos+6UL]>>1&15UL;
-   if (ssid>0UL) {
+   ssid = (uint32_t)(uint8_t)r[pos+6UL]>>1&15UL;
+   if (zerossid || ssid>0UL) {
       t[*len] = '-';
       ++*len;
       if (ssid>9UL) {
@@ -506,16 +479,18 @@ static char Call2Str(const char r[], unsigned long r_len, char t[],
 #define udphub_SSID "-"
 
 
-static char Str2Call(char s[], unsigned long s_len, unsigned long * i,
-                unsigned long p, char cb[], unsigned long cb_len)
+static char Str2Call(char s[], uint32_t s_len, uint32_t * i,
+                uint32_t p, char cb[], uint32_t cb_len,
+                char * hasssid)
 {
-   unsigned long j;
+   uint32_t j;
    char Str2Call_ret;
    X2C_PCOPY((void **)&s,s_len);
+   *hasssid = 0;
    j = p;
-   while ((*i<=s_len-1 && (unsigned char)s[*i]>' ') && s[*i]!='-') {
+   while ((*i<=s_len-1 && (uint8_t)s[*i]>' ') && s[*i]!='-') {
       if (j<p+6UL) {
-         cb[j] = (char)((unsigned long)(unsigned char)s[*i]*2UL);
+         cb[j] = (char)((uint32_t)(uint8_t)s[*i]*2UL);
          ++j;
       }
       ++*i;
@@ -526,14 +501,15 @@ static char Str2Call(char s[], unsigned long s_len, unsigned long * i,
    }
    j = 0UL;
    if (s[*i]=='-') {
+      *hasssid = 1;
       ++*i;
       j = 16UL;
-      if ((unsigned char)s[*i]>='0' && (unsigned char)s[*i]<='9') {
-         j = (unsigned long)(unsigned char)s[*i]-48UL;
+      if ((uint8_t)s[*i]>='0' && (uint8_t)s[*i]<='9') {
+         j = (uint32_t)(uint8_t)s[*i]-48UL;
          ++*i;
       }
-      if ((unsigned char)s[*i]>='0' && (unsigned char)s[*i]<='9') {
-         j = (j*10UL+(unsigned long)(unsigned char)s[*i])-48UL;
+      if ((uint8_t)s[*i]>='0' && (uint8_t)s[*i]<='9') {
+         j = (j*10UL+(uint32_t)(uint8_t)s[*i])-48UL;
          ++*i;
       }
    }
@@ -544,11 +520,11 @@ static char Str2Call(char s[], unsigned long s_len, unsigned long * i,
 } /* end Str2Call() */
 
 
-static long GetIp(char h[], unsigned long h_len, unsigned long * ip,
-                unsigned long * dp, unsigned long * lp, long * fd,
+static int32_t GetIp(char h[], uint32_t h_len, uint32_t * ip,
+                uint32_t * dp, uint32_t * lp, int32_t * fd,
                 char * check)
 {
-   long GetIp_ret;
+   int32_t GetIp_ret;
    X2C_PCOPY((void **)&h,h_len);
    if (aprsstr_GetIp2(h, h_len, ip, dp, lp, check)<0L) {
       GetIp_ret = -1L;
@@ -567,13 +543,14 @@ static long GetIp(char h[], unsigned long h_len, unsigned long * ip,
 } /* end GetIp() */
 
 
-static char GetNum(const char h[], unsigned long h_len, unsigned long * n)
+static char GetNum(const char h[], uint32_t h_len,
+                uint32_t * n)
 {
-   unsigned long i;
+   uint32_t i;
    *n = 0UL;
    i = 0UL;
-   while ((unsigned char)h[i]>='0' && (unsigned char)h[i]<='9') {
-      *n = ( *n*10UL+(unsigned long)(unsigned char)h[i])-48UL;
+   while ((uint8_t)h[i]>='0' && (uint8_t)h[i]<='9') {
+      *n = ( *n*10UL+(uint32_t)(uint8_t)h[i])-48UL;
       ++i;
    }
    return h[i]==0;
@@ -582,10 +559,11 @@ static char GetNum(const char h[], unsigned long h_len, unsigned long * n)
 
 static void parms(void)
 {
+   char ssid;
    char err0;
    char h[1024];
-   unsigned long i;
-   unsigned long fromdigiport;
+   uint32_t i;
+   uint32_t fromdigiport;
    err0 = 0;
    for (;;) {
       osi_NextArg(h, 1024ul);
@@ -596,19 +574,22 @@ static void parms(void)
             if (!GetNum(h, 1024ul, &i)) Err("-l minutes", 11ul);
             lifetime = i*60UL;
          }
-         else if (h[1U]=='L') {
-            osi_NextArg(h, 1024ul);
-            if (!GetNum(h, 1024ul, &i)) Err("-L minutes", 11ul);
-            alllifetime = i*60UL;
+         else if (h[1U]=='a') {
+            /*
+                  ELSIF h[1]="L" THEN
+                    NextArg(h);
+                    IF NOT GetNum(h, i) THEN Err("-L minutes") END;
+                    alllifetime:=i*60;
+            */
+            peertopeer = 1;
          }
-         else if (h[1U]=='a') peertopeer = 1;
          else if (h[1U]=='I') defaultbcin = 1;
          else if (h[1U]=='O') defaultbcout = 1;
          else if (h[1U]=='b') {
             osi_NextArg(h, 1024ul);
             if (h[0U]==0) Err("-b call", 8ul);
             i = 0UL;
-            if (!Str2Call(h, 1024ul, &i, 0UL, broadcastdest, 7ul)) {
+            if (!Str2Call(h, 1024ul, &i, 0UL, broadcastdest, 7ul, &ssid)) {
                Err("-b wrong SSID", 14ul);
             }
          }
@@ -635,6 +616,12 @@ static void parms(void)
                Err("cannot open digi udp socket", 28ul);
             }
          }
+         else if (h[1U]=='d') {
+            osi_NextArg(h, 1024ul);
+            if (!GetNum(h, 1024ul, &maxdupetime)) {
+               Err("-d maxdupetime", 15ul);
+            }
+         }
          else if (h[1U]=='v') show = 1;
          else if (h[1U]=='V') {
             show = 1;
@@ -647,13 +634,15 @@ static void parms(void)
 digi AND user-to-user", 71ul);
                osi_WrStrLn(" -b <call>                         broadcast dest\
 ination call", 62ul);
+               osi_WrStrLn(" -d <ms>                           dupefilter, in\
+ milliseconds intervall discard frames with same CRC", 102ul);
                osi_WrStrLn(" -h                                this", 40ul);
                osi_WrStrLn(" -I                                for new user: \
 broadcast INPUT on", 68ul);
                osi_WrStrLn(" -i <file>                         init routes fr\
 om file", 57ul);
-               osi_WrStrLn(" -L <time>                         minutes route \
-to all ssid\'s (default 10 min)", 80ul);
+               /*      WrStrLn(" -L <time>                         minutes route to all ssid'
+                s (default 10 min)"); */
                osi_WrStrLn("                                   0 no all ssid \
 routing", 57ul);
                osi_WrStrLn(" -l <time>                         minutes lifeti\
@@ -688,8 +677,8 @@ le to file (only if new entries and max. every 15s)", 101ul);
                osi_WrStrLn("(-l) time old table entries will be purged except\
  those from init file", 71ul);
                osic_WrLn();
-               osi_WrStrLn("Source: AX.25 Source Call makes table entry with \
-call/ip/sourceport/date", 73ul);
+               osi_WrStrLn("Source: AX.25 Source Call or last Digi with H-bit\
+ makes table entry with call/ip/sourceport/date", 97ul);
                osi_WrStrLn("        Exception: Protected entry updates Date o\
 nly", 53ul);
                osic_WrLn();
@@ -708,10 +697,10 @@ destination call is used", 74ul);
                  49ul);
                osi_WrStrLn("  OR destinationcall with ssid equals user",
                 43ul);
-               osi_WrStrLn("  OR destinationcall with ssid fits to no user in\
+               osi_WrStrLn("  OR destinationcall but not ssid fits to user in\
  table", 56ul);
-               osi_WrStrLn("     but destinationcall without ssid equals user\
- seen since -L time", 69ul);
+               osi_WrStrLn("     if user is added from heard frames or vom in\
+it file with no ssid (-0 is with ssid)", 88ul);
                osi_WrStrLn("  exception 1: data never sent (back) to ip/port \
 where came from", 65ul);
                osi_WrStrLn("  exception 2: data sent only one time to ip/port\
@@ -741,29 +730,53 @@ i port routes to destinationcall", 80ul);
 } /* end parms() */
 
 
-static void ip2str(unsigned long ip, unsigned long port, char s[],
-                unsigned long s_len)
+static char isdupe(const char ubuf0[], uint32_t ubuf_len,
+                int32_t blen0, uint32_t tms0)
+{
+   uint16_t c;
+   uint32_t i;
+   if (maxdupetime==0UL) return 0;
+   c = (uint16_t)((uint32_t)(uint8_t)ubuf0[blen0]+(uint32_t)
+                (uint8_t)ubuf0[blen0+1L]*256UL);
+   i = dupewp;
+   for (;;) {
+      if (tms0-dupetab[i].time0>=maxdupetime) break;
+      if (dupetab[i].crc==c) return 1;
+      if (i>0UL) --i;
+      else i = 63UL;
+      if (i==dupewp) break;
+   }
+   ++dupewp;
+   if (dupewp>63UL) dupewp = 0UL;
+   dupetab[dupewp].crc = c;
+   dupetab[dupewp].time0 = tms0;
+   return 0;
+} /* end isdupe() */
+
+
+static void ip2str(uint32_t ip, uint32_t port, char s[],
+                uint32_t s_len)
 {
    char h[21];
    s[0UL] = 0;
-   aprsstr_IntToStr((long)(ip/16777216UL), 1UL, h, 21ul);
+   aprsstr_IntToStr((int32_t)(ip/16777216UL), 1UL, h, 21ul);
    aprsstr_Append(s, s_len, h, 21ul);
    aprsstr_Append(s, s_len, ".", 2ul);
-   aprsstr_IntToStr((long)(ip/65536UL&255UL), 1UL, h, 21ul);
+   aprsstr_IntToStr((int32_t)(ip/65536UL&255UL), 1UL, h, 21ul);
    aprsstr_Append(s, s_len, h, 21ul);
    aprsstr_Append(s, s_len, ".", 2ul);
-   aprsstr_IntToStr((long)(ip/256UL&255UL), 1UL, h, 21ul);
+   aprsstr_IntToStr((int32_t)(ip/256UL&255UL), 1UL, h, 21ul);
    aprsstr_Append(s, s_len, h, 21ul);
    aprsstr_Append(s, s_len, ".", 2ul);
-   aprsstr_IntToStr((long)(ip&255UL), 1UL, h, 21ul);
+   aprsstr_IntToStr((int32_t)(ip&255UL), 1UL, h, 21ul);
    aprsstr_Append(s, s_len, h, 21ul);
    aprsstr_Append(s, s_len, ":", 2ul);
-   aprsstr_IntToStr((long)port, 1UL, h, 21ul);
+   aprsstr_IntToStr((int32_t)port, 1UL, h, 21ul);
    aprsstr_Append(s, s_len, h, 21ul);
 } /* end ip2str() */
 
 
-static void showpip(unsigned long ip, unsigned long port)
+static void showpip(uint32_t ip, uint32_t port)
 {
    char h[51];
    ip2str(ip, port, h, 51ul);
@@ -771,34 +784,33 @@ static void showpip(unsigned long ip, unsigned long port)
 } /* end showpip() */
 
 
-static void showcall(const char b[], unsigned long b_len,
-                unsigned long start)
+static void showcall(const char b[], uint32_t b_len, uint32_t start)
 {
    char h[16];
-   unsigned long l;
+   uint32_t l;
    l = 0UL;
-   if (Call2Str(b, b_len, h, 16ul, start, &l)) {
+   if (Call2Str(b, b_len, h, 16ul, start, &l, 1)) {
       h[l] = 0;
       osi_WrStr(h, 16ul);
    }
 } /* end showcall() */
 
 
-static void listtab(char fn[], unsigned long fn_len)
+static void listtab(char fn[], uint32_t fn_len)
 {
-   long fd;
+   int32_t fd;
    pUSER u;
    char s[201];
    char h[201];
-   unsigned long j;
-   unsigned long i;
+   uint32_t j;
+   uint32_t i;
    X2C_PCOPY((void **)&fn,fn_len);
    fd = osi_OpenWrite(fn, fn_len);
    if (osic_FdValid(fd)) {
       u = users;
       while (u) {
          i = 0UL;
-         if (Call2Str(u->call, 7ul, h, 201ul, 0UL, &i)) {
+         if (Call2Str(u->call, 7ul, h, 201ul, 0UL, &i, !u->allssid)) {
             while (i<10UL) {
                h[i] = ' ';
                ++i;
@@ -833,35 +845,60 @@ static void listtab(char fn[], unsigned long fn_len)
          }
          ip2str(u->uip, u->dport, s, 201ul);
          aprsstr_Append(h, 201ul, s, 201ul);
-         if (u->htime>0UL) {
+         if ((u->htime>0UL || u->framesin>0UL) || u->framesout>0UL) {
             i = aprsstr_Length(h, 201ul);
             while (i<36UL) {
                h[i] = ' ';
                ++i;
             }
             h[i] = 0;
-            aprsstr_DateToStr(u->htime, s, 201ul);
+            if (u->htime>0UL) {
+               aprsstr_DateToStr(u->htime, s, 201ul);
+               aprsstr_Append(h, 201ul, s, 201ul);
+               aprsstr_Append(h, 201ul, " ", 2ul);
+            }
+            aprsstr_Append(h, 201ul, "i=", 3ul);
+            aprsstr_CardToStr(u->framesin, 1UL, s, 201ul);
+            aprsstr_Append(h, 201ul, s, 201ul);
+            aprsstr_Append(h, 201ul, " o=", 4ul);
+            aprsstr_CardToStr(u->framesout, 1UL, s, 201ul);
             aprsstr_Append(h, 201ul, s, 201ul);
          }
          aprsstr_Append(h, 201ul, "\012", 2ul);
          osi_WrBin(fd, (char *)h, 201u/1u, aprsstr_Length(h, 201ul));
          u = u->next;
       }
-      strncpy(h,"f from init file, \012p ip/port protected\012B BC out\012b B\
-C in\012A gets all\012",201u);
+      strncpy(h,"dupetime:",201u);
+      aprsstr_CardToStr(maxdupetime, 0UL, s, 201ul);
+      aprsstr_Append(h, 201ul, s, 201ul);
+      aprsstr_Append(h, 201ul, "ms  frames:", 12ul);
+      aprsstr_CardToStr(framecnt, 0UL, s, 201ul);
+      aprsstr_Append(h, 201ul, s, 201ul);
+      aprsstr_Append(h, 201ul, "  dupes:", 9ul);
+      aprsstr_CardToStr(dupecnt, 0UL, s, 201ul);
+      aprsstr_Append(h, 201ul, s, 201ul);
+      aprsstr_Append(h, 201ul, "\012", 2ul);
+      osi_WrBin(fd, (char *)h, 201u/1u, aprsstr_Length(h, 201ul));
+      strncpy(h,"f from init file\012p ip/port protected\012B BC out\012b BC \
+in\012A gets all\012",201u);
       osi_WrBin(fd, (char *)h, 201u/1u, aprsstr_Length(h, 201ul));
       if (peertopeer) {
          strncpy(h,"peer-to-peer routing on\012",201u);
          osi_WrBin(fd, (char *)h, 201u/1u, aprsstr_Length(h, 201ul));
       }
       i = 0UL;
-      if (Call2Str(broadcastdest, 7ul, h, 201ul, 0UL, &i)) {
+      if (Call2Str(broadcastdest, 7ul, h, 201ul, 0UL, &i, 0)) {
          h[i] = 0;
          aprsstr_Append(h, 201ul, " broadcast destination\012", 24ul);
          osi_WrBin(fd, (char *)h, 201u/1u, aprsstr_Length(h, 201ul));
       }
-      aprsstr_IntToStr((long)touserport, 0UL, h, 201ul);
+      aprsstr_IntToStr((int32_t)touserport, 0UL, h, 201ul);
       aprsstr_Append(h, 201ul, " user UDP port\012", 16ul);
+      osi_WrBin(fd, (char *)h, 201u/1u, aprsstr_Length(h, 201ul));
+      strncpy(h,"Uptime: ",201u);
+      aprsstr_TimeToStr(systime-uptime, s, 201ul);
+      aprsstr_Append(h, 201ul, s, 201ul);
+      aprsstr_Append(h, 201ul, "\012", 2ul);
       osi_WrBin(fd, (char *)h, 201u/1u, aprsstr_Length(h, 201ul));
       osic_Close(fd);
    }
@@ -870,21 +907,21 @@ C in\012A gets all\012",201u);
 } /* end listtab() */
 
 
-static char cmpcall(const RAWCALL c, const char b[], unsigned long b_len,
-                unsigned long start, char withssid)
+static char cmpcall(const RAWCALL c, const char b[],
+                uint32_t b_len, uint32_t start, char withssid)
 {
-   unsigned long i;
+   uint32_t i;
    for (i = 0UL; i<=5UL; i++) {
       if (c[i]!=b[i+start]) return 0;
    } /* end for */
-   return !withssid || ((unsigned long)(unsigned char)c[6U]/2UL&15UL)
-                ==((unsigned long)(unsigned char)b[start+6UL]/2UL&15UL);
+   return !withssid || ((uint32_t)(uint8_t)c[6U]/2UL&15UL)==((uint32_t)
+                (uint8_t)b[start+6UL]/2UL&15UL);
 } /* end cmpcall() */
 
 
 static pUSER Realloc(char alloc)
 {
-   unsigned long cnt;
+   uint32_t cnt;
    pUSER new0;
    pUSER last;
    pUSER u;
@@ -903,7 +940,7 @@ static pUSER Realloc(char alloc)
             osic_WrLn();
          }
          if (alloc && new0==0) new0 = u;
-         else osic_free((X2C_ADDRESS *) &u, sizeof(struct USER));
+         else osic_free((char * *) &u, sizeof(struct USER));
          if (last==0) u = users;
          else u = last->next;
          modified = 1;
@@ -915,14 +952,14 @@ static pUSER Realloc(char alloc)
       }
    }
    if (alloc && new0==0) {
-      osic_alloc((X2C_ADDRESS *) &new0, sizeof(struct USER));
+      osic_alloc((char * *) &new0, sizeof(struct USER));
    }
    /*  IF show THEN WrStr(" Table entries="); WrInt(cnt, 1); WrLn; END; */
    return new0;
 } /* end Realloc() */
 
 
-static void showu(unsigned long dp, pUSER u)
+static void showu(uint32_t dp, pUSER u)
 {
    if (u->nospoof) osi_WrStr(" writeprotected", 16ul);
    if (u->bcout) osi_WrStr(" bc-out", 8ul);
@@ -934,45 +971,42 @@ static void showu(unsigned long dp, pUSER u)
 } /* end showu() */
 
 
-static void AddIp(unsigned long ip, unsigned long dp, char fix, char nspoof,
-                char * hasbcin, char defbcin, char defbcout, char getsall,
-                const char buf[], unsigned long buf_len)
+static void AddIp(uint32_t ip, uint32_t dp, char fix,
+                char nspoof, char * hasbcin,
+                char defbcin, char defbcout,
+                char getsall, char defssid,
+                const char buf[], uint32_t buf_len)
 {
    pUSER last;
-   unsigned long i;
+   uint32_t cp;
+   uint32_t i;
    pUSER u;
    /* for fast find, rechain to first position */
    struct USER * anonym;
    struct USER * anonym0;
+   struct USER * anonym1;
    *hasbcin = 0;
-   if (!((unsigned long)(unsigned char)buf[13UL]&1) && (unsigned char)
-                buf[20UL]>=(unsigned char)'\200') return;
-   /* via digi, store only direct heard */
+   cp = 7UL;
+   while ((cp<=56UL && !((uint32_t)(uint8_t)buf[cp+6UL]&1))
+                && (uint8_t)buf[cp+13UL]>=(uint8_t)'\200') cp += 7UL;
    u = users;
    last = 0;
-   while (u) {
-      if (cmpcall(u->call, buf, buf_len, 7UL, 1)) {
-         if (last) {
+   for (;;) {
+      if (u==0) break;
+      if (cmpcall(u->call, buf, buf_len, cp, 1)) {
+         if (!fix && last) {
             last->next = u->next;
             u->next = users;
             users = u;
          }
          { /* with */
             struct USER * anonym = u;
-            anonym->htime = systime;
-            *hasbcin = anonym->bcin;
             if (!anonym->nospoof) {
                anonym->uip = ip; /* store if ip changed */
                anonym->dport = dp;
             }
          }
-         /*
-               IF show THEN
-                 WrStr("Found User "); showcall(buf, SOURCECALL);
-                 showu(u);
-               END;
-         */
-         return;
+         break;
       }
       last = u;
       u = u->next;
@@ -986,55 +1020,67 @@ static void AddIp(unsigned long ip, unsigned long dp, char fix, char nspoof,
          { /* with */
             struct USER * anonym0 = u;
             for (i = 0UL; i<=6UL; i++) {
-               anonym0->call[i] = buf[7UL+i];
+               anonym0->call[i] = buf[cp+i];
             } /* end for */
-            anonym0->call[6U] = (char)(((unsigned long)(unsigned char)
+            anonym0->call[6U] = (char)(((uint32_t)(uint8_t)
                 anonym0->call[6U]/2UL&15UL)*2UL); /* extract pure ssid */
             anonym0->uip = ip;
             anonym0->dport = dp;
-            anonym0->htime = systime;
-            anonym0->nospoof = nspoof;
-            anonym0->nopurge = fix;
-            anonym0->bcin = defbcin;
-            anonym0->bcout = defbcout;
-            anonym0->willall = getsall;
+            anonym0->htime = 0UL;
+            anonym0->framesout = 0UL;
+            anonym0->framesin = 0UL;
          }
-         *hasbcin = defbcin;
          if (show) {
             osi_WrStr("Add User ", 10ul);
-            showcall(buf, buf_len, 7UL);
+            showcall(buf, buf_len, cp);
             showu(dp, u);
          }
          u->next = users;
          users = u;
       }
    }
+   if (u) {
+      { /* with */
+         struct USER * anonym1 = u;
+         if (!fix) {
+            anonym1->htime = systime;
+            ++anonym1->framesin;
+         }
+         anonym1->nospoof = nspoof;
+         anonym1->nopurge = fix;
+         anonym1->bcin = defbcin;
+         anonym1->bcout = defbcout;
+         anonym1->willall = getsall;
+         *hasbcin = anonym1->bcin;
+         anonym1->allssid = !defssid;
+      }
+   }
 } /* end AddIp() */
 
 
-static char sendtouser(char ubuf0[], unsigned long ubuf_len, long blen0,
-                char fromdigi, char bcin, unsigned long fromip0,
-                unsigned long fromport)
+static char sendtouser(char ubuf0[], uint32_t ubuf_len,
+                int32_t blen0, char fromdigi, char bcin,
+                uint32_t fromip0, uint32_t fromport)
 {
    pUSER uu;
    pUSER u;
    pUSER exactu;
-   long ci;
-   long res0;
+   int32_t ci;
+   int32_t res0;
    char ok0;
    char broadcast;
    char topeer;
    ok0 = 0;
    ci = 7L;
-   if (((unsigned long)(unsigned char)ubuf0[13UL]&1)) ci = 0L;
+   if (((uint32_t)(uint8_t)ubuf0[13UL]&1)) ci = 0L;
    else {
       /* find first not done via */
       for (;;) {
          ci += 7L;
          if (ci>63L || ci+7L>=blen0) return 0;
          /* no valid frame */
-         if ((unsigned char)ubuf0[ci+6L]<(unsigned char)'\200') break;
-         if (((unsigned long)(unsigned char)ubuf0[ci+6L]&1)) {
+         if ((uint8_t)ubuf0[ci+6L]<(uint8_t)'\200') break;
+         if (((uint32_t)(uint8_t)ubuf0[ci+6L]&1)) {
             ci = 0L; /* all h-bits set */
             break;
          }
@@ -1047,8 +1093,8 @@ static char sendtouser(char ubuf0[], unsigned long ubuf_len, long blen0,
    if (topeer) {
       exactu = users;
       while (exactu && !cmpcall(exactu->call, ubuf0, ubuf_len,
-                (unsigned long)ci, 1)) {
-         /* conpare with ssid */
+                (uint32_t)ci, 1)) {
+         /* compare with ssid */
          exactu = exactu->next; /* find call + ssid match */
       }
    }
@@ -1059,8 +1105,9 @@ static char sendtouser(char ubuf0[], unsigned long ubuf_len, long blen0,
       u->datagot = 0;
       if ((u->dport>0UL && ((fromdigi || fromip0!=u->uip)
                 || fromport!=u->dport)) && (((u->willall || u==exactu)
-                || broadcast && u->bcout) || (topeer && exactu==0)
-                && cmpcall(u->call, ubuf0, ubuf_len, (unsigned long)ci, 0))) {
+                || broadcast && u->bcout) || ((u->allssid && topeer)
+                && exactu==0) && cmpcall(u->call, ubuf0, ubuf_len,
+                (uint32_t)ci, 0))) {
          /* user enabled */
          /* send never same way back */
          /* try all same call without ssid match */
@@ -1071,6 +1118,7 @@ static char sendtouser(char ubuf0[], unsigned long ubuf_len, long blen0,
             /* have not sent jet to ip/port */
             u->datagot = 1;
             res0 = udpsend(usersock, ubuf0, blen0, u->dport, u->uip);
+            ++u->framesout;
             if (show) {
                osi_WrStr("< send to user ", 16ul);
                showcall(u->call, 7ul, 0UL);
@@ -1095,14 +1143,14 @@ static char sendtouser(char ubuf0[], unsigned long ubuf_len, long blen0,
 } /* end sendtouser() */
 
 
-static void err(char h[], unsigned long h_len, char fn[],
-                unsigned long fn_len, unsigned long lc)
+static void err(char h[], uint32_t h_len, char fn[],
+                uint32_t fn_len, uint32_t lc)
 {
    char s[4001];
    X2C_PCOPY((void **)&h,h_len);
    X2C_PCOPY((void **)&fn,fn_len);
    osi_WrStr("Error in line ", 15ul);
-   aprsstr_IntToStr((long)lc, 1UL, s, 4001ul);
+   aprsstr_IntToStr((int32_t)lc, 1UL, s, 4001ul);
    aprsstr_Append(s, 4001ul, ":[", 3ul);
    aprsstr_Append(s, 4001ul, fn, fn_len);
    aprsstr_Append(s, 4001ul, "] ", 3ul);
@@ -1113,35 +1161,44 @@ static void err(char h[], unsigned long h_len, char fn[],
 } /* end err() */
 
 
-static void initroutes(char fn[], unsigned long fn_len)
+static void initroutes(char fn[], uint32_t fn_len)
 {
-   long fd;
+   int32_t fd;
    char call[201];
    char b[201];
-   unsigned long lc;
-   unsigned long j;
-   unsigned long i;
+   uint32_t lc;
+   uint32_t j;
+   uint32_t i;
    char dbcin0;
    char all;
    char bci;
    char bco;
    char spoof;
-   unsigned long ip;
-   unsigned long dp;
+   char ssid;
+   uint32_t ip;
+   uint32_t dp;
+   pUSER pu;
    X2C_PCOPY((void **)&fn,fn_len);
    fd = osi_OpenRead(fn, fn_len);
    if (osic_FdValid(fd)) {
+      pu = users;
+      while (pu) {
+         pu->nopurge = 0;
+         pu = pu->next;
+      }
       lc = 1UL;
       for (;;) {
          i = 0UL;
          do {
-            if (osi_RdBin(fd, (char *) &b[i], 1u/1u, 1UL)<1L) goto loop_exit;
+            if (osi_RdBin(fd, (char *) &b[i], 1u/1u, 1UL)<1L) {
+               goto loop_exit;
+            }
             ++i;
          } while (!(i>=200UL || b[i-1UL]=='\012'));
          b[i] = 0;
          if (b[0U]!='#') {
             i = 0UL;
-            if (!Str2Call(b, 201ul, &i, 7UL, call, 201ul)) {
+            if (!Str2Call(b, 201ul, &i, 7UL, call, 201ul, &ssid)) {
                err("wrong SSID in Init File", 24ul, fn, fn_len, lc);
             }
             while (b[i]==' ') ++i;
@@ -1159,7 +1216,7 @@ static void initroutes(char fn[], unsigned long fn_len)
                 fn_len, lc);
             }
             j = 0UL;
-            while ((unsigned char)b[i]>' ' && b[i]!='#') {
+            while ((uint8_t)b[i]>' ' && b[i]!='#') {
                b[j] = b[i];
                ++j;
                ++i;
@@ -1169,7 +1226,8 @@ static void initroutes(char fn[], unsigned long fn_len)
                err("wrong IP:PORT in Init File", 27ul, fn, fn_len, lc);
             }
             else {
-               AddIp(ip, dp, 1, spoof, &dbcin0, bci, bco, all, call, 201ul);
+               AddIp(ip, dp, 1, spoof, &dbcin0, bci, bco, all, ssid, call,
+                201ul);
             }
          }
          ++lc;
@@ -1183,19 +1241,27 @@ static void initroutes(char fn[], unsigned long fn_len)
 
 static char ubuf[338];
 
-static long blen;
+static int32_t blen;
 
-static long res;
+static int32_t res;
 
-static unsigned long fromip;
+static uint32_t fromip;
 
-static unsigned long userdport;
+static uint32_t userdport;
 
-static unsigned long lastlist;
+static uint32_t lastlist;
 
 static char dbcin;
 
+static char dupe;
+
 static pUSER voidu;
+
+static uint32_t ts;
+
+static uint32_t tus;
+
+static uint32_t tms;
 
 
 X2C_STACK_LIMIT(100000l)
@@ -1215,11 +1281,16 @@ extern int main(int argc, char **argv)
    digisock = -1L;
    maxentries = 1000UL;
    lifetime = 604800UL;
-   alllifetime = 600UL;
+   /*  alllifetime:=60*10; */
    users = 0;
    initfn[0U] = 0;
    wrfn[0U] = 0;
    broadcastdest[0U] = 0;
+   framecnt = 0UL;
+   dupecnt = 0UL;
+   dupewp = 0UL;
+   maxdupetime = 0UL;
+   memset((char *)dupetab,(char)0,sizeof(struct _0 [64]));
    parms();
    if (initfn[0U]) initroutes(initfn, 1025ul);
    modified = 1;
@@ -1229,40 +1300,48 @@ extern int main(int argc, char **argv)
       Err("cannot bind userport (-p userport)", 35ul);
    }
    systime = osic_time();
+   uptime = systime;
    for (;;) {
       fdclr();
-      if (digisock>=0L) fdsetr((unsigned long)digisock);
-      fdsetr((unsigned long)usersock);
-      if (selectrw(15UL, 0UL)>0L) {
-         if (digisock>=0L && issetr((unsigned long)digisock)) {
-            /* data from digi */
-            fromip = digiip;
-            blen = getudp(digisock, ubuf, 338ul, &fromip, &userdport,
+      if (digisock>=0L) fdsetr((uint32_t)digisock);
+      fdsetr((uint32_t)usersock);
+      tus = 0UL;
+      ts = 15UL;
+      res = selectrwt(&ts, &tus);
+      tms += ((15UL-ts)*1000UL-tus/1000UL)+1UL;
+      if (digisock>=0L && issetr((uint32_t)digisock)) {
+         /* data from digi */
+         fromip = digiip;
+         blen = getudp(digisock, ubuf, 338ul, &fromip, &userdport,
                 checkdigiip);
-            if (blen>=17L) {
-               if (show) {
-                  osi_WrStr("> from digi", 12ul);
-                  ShowFrame(ubuf, 338ul, (unsigned long)(blen-2L), noinf);
-               }
-               if (!sendtouser(ubuf, 338ul, blen, 1, 1, digiip,
-                userdport) && show) {
-                  osi_WrStrLn(" digi out user not found", 25ul);
-               }
-               if (show) osi_WrStrLn("-----", 6ul);
+         if (blen>=17L) {
+            if (show) {
+               osi_WrStr("> from digi", 12ul);
+               ShowFrame(ubuf, 338ul, (uint32_t)(blen-2L), noinf);
             }
+            if (!sendtouser(ubuf, 338ul, blen, 1, 1, digiip,
+                userdport) && show) {
+               osi_WrStrLn(" digi out user not found", 25ul);
+            }
+            if (show) osi_WrStrLn("-----", 6ul);
          }
-         if (issetr((unsigned long)usersock)) {
-            /* data from user */
-            fromip = 0UL;
-            blen = getudp(usersock, ubuf, 338ul, &fromip, &userdport, 0);
-            if (blen>=17L) {
-               if (show) {
-                  osi_WrStr("> from user ", 13ul);
-                  showpip(fromip, userdport);
-                  ShowFrame(ubuf, 338ul, (unsigned long)(blen-2L), noinf);
-               }
+         ++framecnt;
+      }
+      if (issetr((uint32_t)usersock)) {
+         /* data from user */
+         fromip = 0UL;
+         blen = getudp(usersock, ubuf, 338ul, &fromip, &userdport, 0);
+         if (blen>=17L) {
+            dupe = isdupe(ubuf, 338ul, blen-2L, tms);
+            if (show) {
+               if (dupe) osi_WrStr("[dupe]", 7ul);
+               osi_WrStr("> from user ", 13ul);
+               showpip(fromip, userdport);
+               ShowFrame(ubuf, 338ul, (uint32_t)(blen-2L), noinf);
+            }
+            if (!dupe) {
                AddIp(fromip, userdport, 0, 0, &dbcin, defaultbcin,
-                defaultbcout, 0, ubuf, 338ul);
+                defaultbcout, 0, 0, ubuf, 338ul);
                modified = 1;
                if (digisock>=0L) {
                   res = udpsend(digisock, ubuf, blen, todigiport, digiip);
@@ -1271,13 +1350,18 @@ extern int main(int argc, char **argv)
                 userdport) && show) {
                   osi_WrStrLn(" peer-to-peer no user found", 28ul);
                }
-               if (show) osi_WrStrLn("-----", 6ul);
             }
+            else ++dupecnt;
+            if (show) osi_WrStrLn("-----", 6ul);
          }
+         ++framecnt;
       }
       systime = osic_time();
       if (lastlist+15UL<systime || lastlist>systime) {
-         voidu = Realloc(0); /* cyclic purge */
+         if (initfn[0U]) {
+            initroutes(initfn, 1025ul);
+         }
+         voidu = Realloc(0);
          if (modified && wrfn[0U]) {
             listtab(wrfn, 1025ul);
             modified = 0;

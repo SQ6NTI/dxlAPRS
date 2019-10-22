@@ -16,8 +16,14 @@
 #				to axudp frames
 # - udphub		L2 AX25 switch to process many Packet Radio clients on one
 #				single AXUDP interface from Flexnet, XNET, ...
-# - udprfnet
 # - aprsmap		powerful APRS viewer based on Openstreetmap
+# - profile		makes png Image with Geo-Profile of 2 Positions using srtm-datafiles
+# - radiorange		makes png Image/tiles with radio illumintion of 1 or 2 Positions
+#                               using srtm-datafiles
+# - panorama		makes png Image + csv-file from landscape with poi markers
+#                               using srtm-datafiles
+# - cmslogin	l2cat task for bidirectional TCP connect and password login in CMS server
+# - srtmtag	modify srtm1 or srtm3 file with tags eg. wood/water
 # ---------------------- common section ---------------------------------------
 HOSTARCH := $(shell uname -m | \
 	sed -e s/i.86/x86/ \
@@ -30,145 +36,202 @@ HOSTARCH := $(shell uname -m | \
 	    -e s/sh.*/sh/)
 export HOSTARCH
 
+HOSTOS := $(shell uname -s)
+export HOSTOS
+
+ifeq ($(HOSTOS),Darwin)
+# Using gcc as symlink to Mac's clan
+GCCVERSION_GE4 := true
+STRIPFLAGS =
+else
 GCCVERSION := $(shell $(CROSS_COMPILE)gcc --version | \
 	grep gcc | sed 's/.*gcc (.*) //g' | cut -d '.' -f 1)
 
 GCCVERSION_GE4 := $(shell [ $(GCCVERSION) -ge 4 ] && echo true)
+STRIPFLAGS = -s
+endif
 
 .SUFFIXES:
 	MAKEFLAGS += -r
 
-CC			= $(CROSS_COMPILE)gcc
+CC		= $(CROSS_COMPILE)gcc
 STRIP		= $(CROSS_COMPILE)strip
 INCL		= .
 ifeq ($(GCCVERSION_GE4),true)
 CDEFS		= -Wall \
-			  -Wno-unused-variable -Wno-parentheses -Wno-pointer-sign \
-			  -Wno-format -Wno-return-type -Wno-char-subscripts \
-			  -Wno-uninitialized \
-			  -Werror=implicit-function-declaration
+		  -Wno-unused-variable -Wno-parentheses -Wno-pointer-sign \
+		  -Wno-format -Wno-return-type -Wno-char-subscripts \
+		  -Wno-uninitialized \
+		  -Werror=implicit-function-declaration
 else
 CDEFS		= -w
 endif
+
+ifeq ($(HOSTOS),Darwin)
+CFLAGS		= -I$(INCL) -c -O2 -fdata-sections -ffunction-sections -I/usr/X11/include -DMACOS
+LFLAGS		= -L/usr/X11/lib -lX11
+else
 CFLAGS		= -I$(INCL) -c -O2 -fdata-sections -ffunction-sections
 LFLAGS		= -Wl,--gc-sections
+endif
 # ---------------------- armv6 (raspberry pi 1) specific -----------------------
 ifeq ($(PLATFORM), armv6tce)
+OUT		:= $(if $(OUT),$(OUT),../out-armv6tce/)
 EXTLIB  	= lib_armv6/
 XLIBS		= $(EXTLIB)libpng15/libpng.a \
-			  $(EXTLIB)libz.a \
-			  $(EXTLIB)libjpeg.a \
-			  $(EXTLIB)libxcb.so.1 $(EXTLIB)libXdmcp.so.6 $(EXTLIB)libXau.so.6 \
-			  -L$(EXTLIB) -lXext -lX11
+		  $(EXTLIB)libz.a \
+		  $(EXTLIB)libjpeg.a \
+		  $(EXTLIB)libxcb.so.1 $(EXTLIB)libXdmcp.so.6 $(EXTLIB)libXau.so.6 \
+		  -L$(EXTLIB) -lXext -lX11
 CFLAGS		+= -march=armv6zk -mfpu=vfp -mfloat-abi=hard -mcpu=arm1176jzf-s
 CFLAGS		+= -Ilib_armv6/libpng15/ -I$(EXTLIB) -I.
 LFLAGS		+=
 else ifeq ($(PLATFORM), armv6)
+OUT		:= $(if $(OUT),$(OUT),../out-armv6/)
 EXTLIB  	= lib_armv6/
 XLIBS		= $(EXTLIB)libpng16/libpng.a \
-			  $(EXTLIB)libz.a \
-			  $(EXTLIB)libjpeg.a \
-			  $(EXTLIB)libxcb.so.1 $(EXTLIB)libXdmcp.so.6 $(EXTLIB)libXau.so.6 \
-			  -L$(EXTLIB) -lXext -lX11
+		  $(EXTLIB)libz.a \
+		  $(EXTLIB)libjpeg.a \
+		  $(EXTLIB)libxcb.so.1 $(EXTLIB)libXdmcp.so.6 $(EXTLIB)libXau.so.6 \
+		  -L$(EXTLIB) -lXext -lX11
 CFLAGS		+= -march=armv6zk -mfpu=vfp -mfloat-abi=hard -mcpu=arm1176jzf-s
 CFLAGS		+= -Ilib_armv6/libpng16/ -I$(EXTLIB) -I.
 LFLAGS		+=
 # ---------------------- armv7hf (bur am335x pp) specific ---------------------
 else ifeq ($(PLATFORM), armv7hf)
+OUT		:= $(if $(OUT),$(OUT),../out-armv7hf/)
 EXTLIB		= lib_armv7hf/
 XLIBS		= $(EXTLIB)libpng.a \
-			  $(EXTLIB)libz.a \
-			  $(EXTLIB)libjpeg.a \
-			  $(EXTLIB)libxcb.so $(EXTLIB)libXdmcp.so $(EXTLIB)libXau.so \
-			  -L$(EXTLIB) -lXext -lX11
+		  $(EXTLIB)libz.a \
+		  $(EXTLIB)libjpeg.a \
+		  $(EXTLIB)libxcb.so $(EXTLIB)libXdmcp.so $(EXTLIB)libXau.so \
+		  -L$(EXTLIB) -lXext -lX11
 CFLAGS		+= -march=armv7-a -mfpu=neon -mfloat-abi=hard
 CFLAGS		+= -I$(EXTLIB)
 LFLAGS		+=
 # -------------------------- x86_64 specific -----------------------------------
 else ifeq ($(HOSTARCH), x86_64)
-EXTLIB		= lib_x86/
-XLIBS		= $(EXTLIB)libpng.a \
-			  $(EXTLIB)libz.a \
-			  $(EXTLIB)libjpeg.a \
-			 -lXext -lX11
-CFLAGS		+= -m32
-LFLAGS		+= -m32
+XLIBS		= -lpng -ljpeg -lXext -lX11
+ifeq ($(PLATFORM), x86_32)
+	OUT	:= $(if $(OUT),$(OUT),../out-x86_32/)
+	CFLAGS	+= -m32
+	LFLAGS	+= -m32
+	TARGETS	+= $(OUT)aprsmap-x86_32
+else ifneq ($(HOSTOS),Darwin)
+TARGETS		+= $(OUT)aprsmap-x86_64
+endif
+OUT		:= $(if $(OUT),$(OUT),../out-x86_64/)
 # -------------------------- x86_32 (default) specific ------------------------
 else ifeq ($(HOSTARCH), x86)
-EXTLIB		= lib_x86/
-XLIBS		= $(EXTLIB)libpng.a \
-			  $(EXTLIB)libz.a \
-			  $(EXTLIB)libjpeg.a \
-			  -lXext -lX11
+OUT		:= $(if $(OUT),$(OUT),../out-x86_32/)
+TARGETS		+= $(OUT)aprsmap-x86_32
+XLIBS		= -lpng -ljpeg -lXext -lX11
 else
+OUT		:= $(if $(OUT),$(OUT),../out/)
 XLIBS		+= -lpng -ljpeg -lXext -lX11
 endif
 # ------------------ objects enumeration ------------------
 OBJ_COMMON = \
-	Select.o \
-	aprspos.o \
-	aprsstr.o \
-	osic.o \
-	osi.o \
-	soundctl.o \
-	tcp.o \
-	udp.o
+	$(OUT)Select.o \
+	$(OUT)aprspos.o \
+	$(OUT)aprsstr.o \
+	$(OUT)osic.o \
+	$(OUT)osi.o \
+	$(OUT)soundctl.o \
+	$(OUT)tcp.o \
+	$(OUT)udp.o
 
 OBJ_AFSKMODEM = \
-	afskmodem.o \
-	afskmodemptt.o
+	$(OUT)afskmodem.o \
+	$(OUT)afskmodemptt.o
 
-OBJ_GPS2APRS	= gps2aprs.o
-OBJ_GPS2DIGIPOS	= gps2digipos.o
+OBJ_GPS2APRS	= $(OUT)gps2aprs.o
+OBJ_GPS2DIGIPOS	= $(OUT)gps2digipos.o
 
 OBJ_SONDEMOD	= \
-	geodesy.o \
-	gps.o \
-	gpspos.o \
-	navigation.o \
-	rinex.o \
-	sem.o \
-	sondeaprs.o \
-	time_conversion.o \
-	yuma.o \
-	sondemod.o
+	$(OUT)geodesy.o \
+	$(OUT)gps.o \
+	$(OUT)gpspos.o \
+	$(OUT)navigation.o \
+	$(OUT)rinex.o \
+	$(OUT)sem.o \
+	$(OUT)sondeaprs.o \
+	$(OUT)time_conversion.o \
+	$(OUT)yuma.o \
+	$(OUT)sondemod.o \
+	$(OUT)libsrtm.o
 
-OBJ_SONDEUDP	= sondeudp.o
-OBJ_UDPBOX		= udpbox.o
-OBJ_UDPGATE4	= udpgate4.o
-OBJ_UDPFLEX		= udpflex.o
-OBJ_UDPHUB		= udphub.o
-OBJ_UDPRFNET	= udprfnet.o
+OBJ_SONDEUDP	= $(OUT)sondeudp.o \
+	$(OUT)rsc.o \
+	$(OUT)rsc_decode.o
+
+OBJ_UDPBOX	= $(OUT)udpbox.o
+OBJ_UDPGATE4	= $(OUT)udpgate4.o
+OBJ_UDPFLEX	= $(OUT)udpflex.o
+OBJ_UDPHUB	= $(OUT)udphub.o
 OBJ_APRSMAP	= \
-	aprsdecode.o \
-	aprsmap.o \
-	aprstat.o \
-	aprstext.o \
-	beep.o \
-	maptool.o \
-	pngread.o \
-	pngwrite.o \
-	jpgdec.o \
-	useri.o \
-	xosi.o
+	$(OUT)aprsdecode.o \
+	$(OUT)aprsmap.o \
+	$(OUT)aprstat.o \
+	$(OUT)aprstext.o \
+	$(OUT)beep.o \
+	$(OUT)maptool.o \
+	$(OUT)pngread.o \
+	$(OUT)pngwrite.o \
+	$(OUT)jpgdec.o \
+	$(OUT)useri.o \
+	$(OUT)xosi.o \
+	$(OUT)libsrtm.o \
+	$(OUT)pastewrapper.o
 
-OBJ_SDRTST		= tcpb.o sdr.o sdrtest.o
-OBJ_SDRRADIO	= tcpb.o sdr.o radio.o
+OBJ_SDRTST	= $(OUT)tcpb.o $(OUT)sdr.o $(OUT)sdrtest.o
+OBJ_SDRRADIO	= $(OUT)tcpb.o $(OUT)sdr.o $(OUT)radio.o
+OBJ_L2CAT	= $(OUT)l2.o \
+	$(OUT)frameio.o \
+	$(OUT)deflate.o \
+	$(OUT)Execlogin.o \
+	$(OUT)cleanup.o \
+	$(OUT)l2cat.o
+OBJ_ADSB2APRS	= $(OUT)adsb2aprs.o $(OUT)tcpb.o
+OBJ_PROFILE	= $(OUT)profile.o \
+	$(OUT)imagetext.o \
+	$(OUT)libsrtm.o \
+	$(OUT)pngwrite.o
+OBJ_RADIORANGE	= $(OUT)radiorange.o \
+	$(OUT)pngwritepalette.o \
+	$(OUT)libsrtm.o
+OBJ_PANORAMA = $(OUT)panorama.o\
+	$(OUT)imagetext.o \
+	$(OUT)libsrtm.o \
+	$(OUT)pngwrite.o \
+	$(OUT)pngread.o
+OBJ_CMSLOGIN = $(OUT)cmslogin.o
+OBJ_SRTMTAG = $(OUT)srtmtag.o \
+	$(OUT)pngread.o
 
-TARGETS = \
-	afskmodem \
-	gps2aprs \
-	gps2digipos \
-	udpbox \
-	udpgate4 \
-	udpflex \
-	udphub \
-	udprfnet \
-	sondemod \
-	sondeudp \
-	aprsmap \
-	sdrtst \
-	sdrradio
+TARGETS += \
+	$(OUT)afskmodem \
+	$(OUT)gps2aprs \
+	$(OUT)gps2digipos \
+	$(OUT)udpbox \
+	$(OUT)udpgate4 \
+	$(OUT)udpflex \
+	$(OUT)udphub \
+	$(OUT)sondemod \
+	$(OUT)sondeudp \
+	$(OUT)aprsmap \
+	$(OUT)sdrtst \
+	$(OUT)sdrradio \
+	$(OUT)adsb2aprs \
+	$(OUT)profile \
+	$(OUT)radiorange \
+	$(OUT)panorama \
+	$(OUT)cmslogin \
+	$(OUT)srtmtag
+
+ifneq ($(HOSTOS), Darwin)
+	TARGETS += $(OUT)l2cat
+endif
 
 OBJS = \
 	$(OBJ_COMMON) \
@@ -181,76 +244,153 @@ OBJS = \
 	$(OBJ_UDPGATE4) \
 	$(OBJ_UDPFLEX) \
 	$(OBJ_UDPHUB) \
-	$(OBJ_UDPRFNET) \
 	$(OBJ_APRSMAP) \
 	$(OBJ_SDRTST) \
-	$(OBJ_SDRRADIO)
+	$(OBJ_SDRRADIO) \
+	$(OBJ_L2CAT)	\
+	$(OBJ_ADSB2APRS) \
+	$(OBJ_PROFILE) \
+	$(OBJ_RADIORANGE) \
+	$(OBJ_PANORAMA) \
+	$(OBJ_CMSLOGIN)	\
+	$(OBJ_SRTMTAG)
+
 # ------------------- target make rules -------------------
 #                     -----------------
-%.o: %.c
+$(OUT)%.o: %.c
 	@echo [compiling] $@
 	@$(CC) $(CDEFS) $(CFLAGS) -o $@ $<
 
-all: $(TARGETS)
+.PHONY: all
+
+all: prepare $(TARGETS)
 
 clean:
-	rm -f $(OBJS) $(TARGETS)
+	@rm -f $(OBJS) $(TARGETS)
+	@rm -r -f $(OUT)
 
-afskmodem: $(OBJ_AFSKMODEM) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o afskmodem $(OBJ_COMMON) $(OBJ_AFSKMODEM) -lm
-	$(STRIP) afskmodem -s
+prepare:
+	@test -d $(OUT) || mkdir -p $(OUT)
 
-gps2aprs: $(OBJ_GPS2APRS) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o gps2aprs $(OBJ_COMMON) $(OBJ_GPS2APRS) -lm
-	$(STRIP) gps2aprs -s
+$(OUT)afskmodem: $(OBJ_AFSKMODEM) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)afskmodem $(OBJ_COMMON) $(OBJ_AFSKMODEM) -lm
+	@$(STRIP) $(OUT)afskmodem $(STRIPFLAGS)
 
-gps2digipos: $(OBJ_GPS2DIGIPOS) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o gps2digipos $(OBJ_COMMON) $(OBJ_GPS2DIGIPOS) -lm
-	$(STRIP) gps2digipos -s
+$(OUT)gps2aprs: $(OBJ_GPS2APRS) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)gps2aprs $(OBJ_COMMON) $(OBJ_GPS2APRS) -lm
+	@$(STRIP) $(OUT)gps2aprs $(STRIPFLAGS)
 
-sondemod: $(OBJ_SONDEMOD) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o sondemod $(OBJ_COMMON) $(OBJ_SONDEMOD) -lm
-	$(STRIP) sondemod -s
+$(OUT)gps2digipos: $(OBJ_GPS2DIGIPOS) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)gps2digipos $(OBJ_COMMON) $(OBJ_GPS2DIGIPOS) -lm
+	@$(STRIP) $(OUT)gps2digipos $(STRIPFLAGS)
 
-sondeudp: $(OBJ_SONDEUDP) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o sondeudp $(OBJ_COMMON) $(OBJ_SONDEUDP) -lm
-	$(STRIP) sondeudp -s
+$(OUT)sondemod: $(OBJ_SONDEMOD) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)sondemod $(OBJ_COMMON) $(OBJ_SONDEMOD) -lm
+	@$(STRIP) $(OUT)sondemod $(STRIPFLAGS)
 
-udpbox: $(OBJ_UDPBOX) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o udpbox $(OBJ_COMMON) $(OBJ_UDPBOX) -lm
-	$(STRIP) udpbox -s
+$(OUT)sondeudp: $(OBJ_SONDEUDP) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)sondeudp $(OBJ_COMMON) $(OBJ_SONDEUDP) -lm
+	@$(STRIP) $(OUT)sondeudp $(STRIPFLAGS)
 
-udpgate4: $(OBJ_UDPGATE4) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o udpgate4 $(OBJ_COMMON) $(OBJ_UDPGATE4) -lm
-	$(STRIP) udpgate4 -s
+$(OUT)udpbox: $(OBJ_UDPBOX) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)udpbox $(OBJ_COMMON) $(OBJ_UDPBOX) -lm
+	@$(STRIP) $(OUT)udpbox $(STRIPFLAGS)
 
-udpflex: $(OBJ_UDPFLEX) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o udpflex $(OBJ_COMMON) $(OBJ_UDPFLEX) -lm
-	$(STRIP) udpflex -s
+$(OUT)udpgate4: $(OBJ_UDPGATE4) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)udpgate4 $(OBJ_COMMON) $(OBJ_UDPGATE4) -lm
+	@$(STRIP) $(OUT)udpgate4 $(STRIPFLAGS)
 
-udphub: $(OBJ_UDPHUB) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o udphub $(OBJ_COMMON) $(OBJ_UDPHUB) -lm
-	$(STRIP) udphub -s
+$(OUT)udpflex: $(OBJ_UDPFLEX) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)udpflex $(OBJ_COMMON) $(OBJ_UDPFLEX) -lm
+	@$(STRIP) $(OUT)udpflex $(STRIPFLAGS)
 
-udprfnet: $(OBJ_UDPRFNET) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o udprfnet $(OBJ_COMMON) $(OBJ_UDPRFNET) -lm -lrt
-	$(STRIP) udprfnet -s
+$(OUT)udphub: $(OBJ_UDPHUB) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)udphub $(OBJ_COMMON) $(OBJ_UDPHUB) -lm
+	@$(STRIP) $(OUT)udphub $(STRIPFLAGS)
 
-aprsmap : $(OBJ_APRSMAP) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o aprsmap $(OBJ_APRSMAP) $(OBJ_COMMON) $(XLIBS) -lm
-	$(STRIP) aprsmap -s
-aprsmap-cleanobj:
-	rm -f $(OBJ_APRSMAP)
+$(OUT)aprsmap-x86_32: $(OBJ_APRSMAP) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)aprsmap-x86_32 $(OBJ_APRSMAP) \
+	$(OBJ_COMMON) $(XLIBS) \
+	-lpthread -lxcb -lXau -lXdmcp -lm -lpthread -ldl -lz \
+	-static
+	@$(STRIP) $(OUT)aprsmap-x86_32 $(STRIPFLAGS)
 
-sdrtst : $(OBJ_SDRTST) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o sdrtst $(OBJ_SDRTST) $(OBJ_COMMON) -lm
-	$(STRIP) sdrtst -s
+$(OUT)aprsmap-x86_64: $(OBJ_APRSMAP) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)aprsmap-x86_64 $(OBJ_APRSMAP) \
+	$(OBJ_COMMON) $(XLIBS) \
+	-lpthread -lxcb -lXau -lXdmcp -lm -lpthread -ldl -lz \
+	-static
+	@$(STRIP) $(OUT)aprsmap-x86_64 $(STRIPFLAGS)
 
-sdrradio : $(OBJ_SDRRADIO) $(OBJ_COMMON)
-	$(CC) $(LFLAGS) -o sdrradio $(OBJ_SDRRADIO) $(OBJ_COMMON) -lm
-	$(STRIP) sdrradio -s
+$(OUT)aprsmap : $(OBJ_APRSMAP) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)aprsmap $(OBJ_APRSMAP) \
+	$(OBJ_COMMON) $(XLIBS) -lm
+	@$(STRIP) $(OUT)aprsmap $(STRIPFLAGS)
+
+$(OUT)sdrtst : $(OBJ_SDRTST) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)sdrtst $(OBJ_SDRTST) $(OBJ_COMMON) -lm
+	@$(STRIP) $(OUT)sdrtst $(STRIPFLAGS)
+
+$(OUT)sdrradio : $(OBJ_SDRRADIO) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)sdrradio $(OBJ_SDRRADIO) $(OBJ_COMMON) -lm
+	@$(STRIP) $(OUT)sdrradio $(STRIPFLAGS)
+
+$(OUT)l2cat : $(OBJ_L2CAT) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)l2cat $(OBJ_L2CAT) $(OBJ_COMMON) -lm
+	@$(STRIP) $(OUT)l2cat $(STRIPFLAGS)
+
+$(OUT)adsb2aprs: $(OBJ_ADSB2APRS) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)adsb2aprs $(OBJ_ADSB2APRS) $(OBJ_COMMON) -lm
+	@$(STRIP) $(OUT)adsb2aprs $(STRIPFLAGS)
+
+$(OUT)profile : $(OBJ_PROFILE) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)profile $(OBJ_PROFILE) \
+	$(OBJ_COMMON) $(XLIBS) -lm
+	@$(STRIP) $(OUT)profile $(STRIPFLAGS)
+
+$(OUT)radiorange: $(OBJ_RADIORANGE) $(OBJ_COMMON)
+	@echo [ linking ] $@
+	@$(CC) $(LFLAGS) -o $(OUT)radiorange $(OBJ_RADIORANGE) $(OBJ_COMMON) \
+	$(XLIBS) -lm
+	@$(STRIP) $(OUT)radiorange $(STRIPFLAGS)
+
+$(OUT)panorama: $(OBJ_PANORAMA) $(OBJ_COMMON)
+	$(CC) $(LFLAGS) -o $@ $(OBJ_PANORAMA) $(OBJ_COMMON) \
+	$(XLIBS) -lm
+	$(STRIP) $@ $(STRIPFLAGS)
+
+$(OUT)cmslogin: $(OBJ_CMSLOGIN) $(OBJ_COMMON)
+	$(CC) $(LFLAGS) -o $@ $(OBJ_COMMON) $(OBJ_CMSLOGIN) -lm
+	$(STRIP) $@ $(STRIPFLAGS)
+
+$(OUT)srtmtag: $(OBJ_SRTMTAG) $(OBJ_COMMON)
+	$(CC) $(LFLAGS) -o $@ $(OBJ_COMMON) $(OBJ_SRTMTAG) \
+	$(XLIBS) -lm
+	$(STRIP) $@ $(STRIPFLAGS)
+
+%:
+	make prepare
+	make $(OUT)$@
 
 diag:
-	echo $(HOSTARCH)
-
+	@echo "Hostarch    : $(HOSTARCH)"
+	@echo "BuildOutput : $(OUT)"
+	@echo "Platform    : $(PLATFORM)"
 # end of makefile

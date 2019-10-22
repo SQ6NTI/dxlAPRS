@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h> 
+#include <stdint.h>
 
 static fd_set rset, wset;
 static unsigned maxfd;
@@ -53,26 +54,53 @@ void fdsetw(long n)
 
 unsigned issetr(long n)
 {
-  if FD_ISSET(n, &rset) return 1;
+  if (FD_ISSET(n, &rset)) return 1;
   return 0;
 }
 
 unsigned issetw(long n)
 {
-  if FD_ISSET(n, &wset) return 1;
+  if (FD_ISSET(n, &wset)) return 1;
   return 0;
 }
 
-int selectrwt(long *sec, long *usec)
+int selectrwt(uint32_t *sec, uint32_t *usec)
 {
   struct timeval tv;
   int ret;
+#ifdef MACOS
+  struct timeval spec1, spec2;
+  time_t s;
+  long us;
+  gettimeofday(&spec1, NULL);
+#endif
 
   tv.tv_sec  = *sec;
   tv.tv_usec = *usec;
   ret=select(maxfd+1, &rset, &wset, NULL, &tv);
+#ifdef MACOS
+  /* MacOS does not update tv value in select */
+  gettimeofday(&spec2, NULL);
+  s = spec2.tv_sec-spec1.tv_sec;
+  us = spec2.tv_usec - spec1.tv_usec;
+  if (us < 0) {
+          us += 1000000;
+          s -= 1;
+  }
+  *sec -= s;
+  *usec -= us;
+  if (*usec < 0) {
+          *usec += 1000000;
+          *sec -= 1;
+  }
+  if (*sec < 0) {
+          *sec = 0;
+          *usec = 0;
+  }
+#else
   *sec = tv.tv_sec;
   *usec= tv.tv_usec;
+#endif
   return ret;
 }
 

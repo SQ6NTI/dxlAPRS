@@ -21,11 +21,14 @@
 #ifndef mlib_H_
 #include "mlib.h"
 #endif
+#include <dirent.h>
 #include <osic.h>
 
-typedef long osi_File;
+typedef int32_t osi_File;
 
-typedef long osi_SOCKET;
+typedef int32_t osi_SOCKET;
+
+typedef DIR * osi_DIRCONTEXT;
 
 #define osi_pi 3.1415926535898
 
@@ -111,45 +114,57 @@ typedef long osi_SOCKET;
 
 #define osi_udpsend udpsend
 
-extern long osi_OpenAppendLong(char [], unsigned long);
+extern int32_t osi_OpenAppendLong(char [], uint32_t);
 
-extern long osi_OpenAppend(char [], unsigned long);
+extern int32_t osi_OpenAppend(char [], uint32_t);
 
-extern long osi_OpenWrite(char [], unsigned long);
+extern int32_t osi_OpenWrite(char [], uint32_t);
 
-extern long osi_OpenReadLong(char [], unsigned long);
+extern int32_t osi_OpenReadLong(char [], uint32_t);
 
-extern long osi_OpenRead(char [], unsigned long);
+extern int32_t osi_OpenRead(char [], uint32_t);
 
-extern long osi_OpenRW(char [], unsigned long);
+extern int32_t osi_OpenRW(char [], uint32_t);
 
-extern long osi_OpenNONBLOCK(char [], unsigned long);
+extern int32_t osi_OpenNONBLOCK(char [], uint32_t);
 
-extern void osi_Rename(char [], unsigned long, char [], unsigned long);
+extern void osi_Rename(char [], uint32_t, char [], uint32_t);
 
-extern void osi_WerrLn(char [], unsigned long);
+extern void osi_WerrLn(char [], uint32_t);
 
-extern long osi_RdBin(long, char [], unsigned long, unsigned long);
+extern int32_t osi_RdBin(int32_t, char [], uint32_t, uint32_t);
 
-extern void osi_WrBin(long, char [], unsigned long, unsigned long);
+extern void osi_WrBin(int32_t, char [], uint32_t, uint32_t);
 
-extern void osi_Werr(char [], unsigned long);
+extern void osi_Werr(char [], uint32_t);
 
-extern void osi_WrHex(unsigned long, unsigned long);
+extern void osi_WrHex(uint32_t, uint32_t);
 
-extern void osi_NextArg(char [], unsigned long);
+extern int32_t osi_OpenDir(char [], uint32_t, osi_DIRCONTEXT *);
 
-extern void osi_WrStr(char [], unsigned long);
+extern void osi_ReadDirLine(char [], uint32_t, osi_DIRCONTEXT);
 
-extern void osi_Erase(char [], unsigned long, char *);
+extern void osi_CloseDir(osi_DIRCONTEXT);
 
-extern char osi_Exists(char [], unsigned long);
+extern char osi_CreateDir(char [], uint32_t, uint32_t);
 
-extern long osi_getptsname(long, X2C_ADDRESS, unsigned long);
+extern void osi_NextArg(char [], uint32_t);
 
-extern long osi_symblink(X2C_ADDRESS, X2C_ADDRESS);
+extern void osi_WrStr(char [], uint32_t);
 
-extern void osi_WrStrLn(char [], unsigned long);
+extern void osi_Erase(char [], uint32_t, char *);
+
+extern char osi_Exists(char [], uint32_t);
+
+extern int32_t osi_getptsname(int32_t, char *, uint32_t);
+
+extern int32_t osi_symblink(char *, char *);
+
+extern void osi_WrStrLn(char [], uint32_t);
+
+extern int32_t osi_realint(float);
+
+extern uint32_t osi_realcard(float);
 
 
 extern void osi_BEGIN(void);

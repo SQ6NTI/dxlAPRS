@@ -18,9 +18,15 @@
 #include <unistd.h>
 #include <netinet/tcp.h>
 
+#ifndef MSG_MORE
+#define MSG_MORE 0
+#endif
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 //--------------------
 
-int resolv(char *url, int *host)
+int resolv(char *url, uint32_t *host)
 {
   struct hostent *h;
 
@@ -150,7 +156,7 @@ int sockfd;
 
 //---------------------
 
-int acceptconnect(int fd, char *addr, int *len)
+int acceptconnect(int fd, char *addr, uint32_t *len)
 {
   return accept(fd, (struct sockaddr *)addr, len);
 }
@@ -206,14 +212,14 @@ int readsock(int fd, char *buf, int len)
 
 //--------------------
 
-int getsockipnum(int fd, char *addr, int *len)
+int getsockipnum(int fd, char *addr, uint32_t *len)
 {
   return getsockname(fd, (struct sockaddr *)addr, len);
 }
 
 //--------------------
 
-int getpeeripnum(int fd, char *addr, int *len)
+int getpeeripnum(int fd, char *addr, uint32_t *len)
 {
   return getpeername(fd, (struct sockaddr *)addr, len);
 }

@@ -80,7 +80,7 @@ configurable Stepwidth
 |134 Center before Leftclicked Position on Map
 
 |136 Step back in Zoom/Pan History, same
-as "b" BACKSPACE or Rightlick
+as "b" BACKSPACE or Rightclick
 
 |138 close this menu
 
@@ -123,8 +123,9 @@ and sent Data. On next program start Data
 will be read to RAM and have same state as
 at program termination. The logfile may be
 deleted, renamed, changed any time even if it
-is write enabled. A given File Path is used for
-the Call Logs too. Append %d for Dayly Logsfile.
+is write enabled. A given File Path is used
+for watch-call and manual saved Logs too.
+Append %d for daywise logfile. "logs/rawlog%d"
 
 |309 Days Keep (dayly) Rawdata Logfiles. Purge
 starts on Program start and Midnight.
@@ -195,8 +196,10 @@ Modify Start time with "Time full Bright" Knob
 
 |515 Remove Marker 1 and 2, the Measure
 Line and QTH Locator Area
+shortcut ":"
 
-|517 toggle radio link calculation on/off
+|517 toggle Geoprofile (radio link)
+calculation on/off (shortcut "r")
 
 |518 Enter antenna 1 and 2 over ground in meters and
 frequency and if altitude datafile (srtm) is
@@ -207,10 +210,12 @@ half fresnelzone till red for whole fresnelzone
 shaped.
 
 |522 Show Maps with selected Data like Wx-Maps or
-choose a Symbol and show Stations with this.
+choose Symbol(s) and show Stations with this.
 Use TAB-Key to toggle 2 Map Views.
 
-|535 Manage Sent Messages (Shortcut M)
+|535 Manage Sent Messages (Shortcut M).
+(Re)view received Messages with
+Click to "M" on Statusbar.
 
 |536 Enter Root directory path of Map-Cache
 where the Map Downoad Task writes Map
@@ -218,15 +223,16 @@ Files into or where You have a set of
 downloaded Maps
 
 |538 Manage Map Types.
-The Lines are typnames like "tiles_topo -128"
-the optional value is a brightness correction
-(range -255 to 255), darker with - values. 
+The Lines are typnames like "tiles_topo 0.3"
+the optional value is gamma of the images,
+0.45 is normal, 0.3 for more contrast. 
 The names use subdirectories in "map directory"
 and are passed to the map downloader where URLs
 to the names are associated. First entry is used
 at program start. Sort entries by "Edit" and "Add".
-Use first 3 lines by shortcut "7" "8" "9" else
-"Tools > Choose Map"
+First enabled  3 lines by shortcut "7" "8" "9"
+Rotate through enabled Maps with "6".
+else "Tools > Choose Map"
 
 |540 Choose Maptype, Reload Map You see
 or Prepare offline Map Collections
@@ -246,6 +252,10 @@ Open as Popup on Click to Map
 |570 Files Stuff and Quit 
 
 |575 Switch on Static Toolbar
+
+|607 starts command from file chkvers.txt
+"$" inserts program version like
+"chkvers.bat $"    
 
 |700 Define Area and Resolution for Downloading
 a Complete OSM Map Collection for Offline usage.
@@ -342,7 +352,19 @@ on Mouse Over Wx Symbol
 on Mouse Over Wx Symbol
 |1160 Swith off Mouse Over 
 
+|1303 Center Symbol to middle of screen
 
+|1304 Show Info of last Beacon. Step thru Beacons
+with < > Key or More Infos/< > Button
+
+|1306 Zoom Map so Track fits on it. Maximum
+as in Config/Map Moving/Default Zoom
+
+|1307 Show Rf Paths to Igates
+
+|1308 Show Stations the Igate Heard
+
+|1309 Show Beacon Timer Intervall Histogram
 
 |1310 Show driving speed over time as data
 avaliable, out of sense values are not shown
@@ -353,7 +375,8 @@ avaliable, out of sense values are not shown
 
 |1400 Show info to Waypoint or Beacon and go back in time
 
-|1401 Toggle show All or Waypoints with Error Flags
+|1401 Toggle step through All or waypoints
+with Error flags. Shortcut "e"
 
 |1402 Show info to Waypoint or Beacon and go forward in time
 
@@ -377,6 +400,8 @@ show an Altitude over Distance Diagramm.
 Trackfilter on/off may repair wrong values
 or manual delete wrong waypoints before.
 The Cursor line shows a marked waypoint.
+If Altitude Data avaliable, the Ground
+Level is shown too in brown.
 
 |1420 Count Beacons and view it in a Histogramm
 
@@ -389,23 +414,22 @@ later by Importing the logfile.
 May be enabled again in Configs Watchlist
 or another hit to this Button
 
-|1435 Append this User to Watchlist
-so get a Popup Window with a Message
-if the User is active and (if not in
-Single User Mode) the Map is shifted
-to fit last position into sight.
-In Config > Map Moveing > Center Watchcall
-you define how near to Center of Window. 
-Next Hit to this Button will switch off
-watching this Call.
+|1435 Append this User to Watchlist to get
+a Popup Window with a Message if the
+User is active. More Actions may be
+switched in Config, Watch Calls.
+Next Hit to this Button will switch
+off watching this Call.
 
 |1438 Show Objects of this Sender on Map
 
-|1440 Delete the first Waypoint nearest to Click
-continued Hits to this Button deletes
-Waypoints with error markers. If clicked
-to Symbol or Text the whole User will be
-deleted (only in RAM not in Logfile)  
+|1440 Delete marked Symbol or Waypoint. Continued
+hits to this Button (or DEL-Key) delete next
+Waypoints. If toggled "Waypoint" Button to
+"Errors", only Waypoints with an error-flag
+will be Deleted. To Delete last Waypoint,
+Click Symbol, go 1 step back and force "<" ">"
+before. Deletion is done in RAM not in Logfile.  
 
 |1445 Cycle through avaliable Track Colours incl Invisable
 
@@ -419,6 +443,10 @@ If one or more Messages click to view
 |1501 Brightness of Objects/Items. This are things
 not transmitting at this position but set there
 from another Station. Dimm to 0 to switch off. 
+
+|1502 Brightness of Map is stored for each Map-Type.
+Gamma (Contrast) of each Map-Type may be modified
+in Tools/Add Maptypes [mapname gamma brightness]
 
 |1503 Dimm to 1% to show waypoints only
 
@@ -434,8 +462,8 @@ Toggle on/off with "L" shortcut
 transmitted position joined by track lines
 
 |1508 Remove timed out Things from Image,
-data will stay in RAM until
-"Keep Data im Memory" in Config
+maximum Time and keep Data in RAM until
+"Data im RAM" in Config/Timers
 
 |1509 Give Objects/Tracks time to dissapear
 after "Full Bright Time"
@@ -447,6 +475,7 @@ No Data Flow: red
 Data Sent: yellow
 Data Received: green
 Full Configure in Config, Online
+Raw Data in Tools, List, Monitor
 
 |1701 UDP Port 1 Status
 Switch AXUDP Interface to
@@ -456,6 +485,7 @@ Data sent: yellow
 Data received: green
 Idle: red
 Configure in Config, Rf-Ports
+Raw Data in Tools, List, Monitor
 
 |1702 UDP Port 2 Status
 Switch AXUDP Interface to
@@ -465,6 +495,7 @@ Data sent: yellow
 Data received: green
 Idle: red
 Configure in Config, Rf-Ports
+Raw Data in Tools, List, Monitor
 
 |1703 UDP Port 3 Status
 Switch AXUDP Interface to
@@ -474,6 +505,7 @@ Data sent: yellow
 Data received: green
 Idle: red
 Configure in Config, Rf-Ports
+Raw Data in Tools, List, Monitor
 
 |1704 UDP Port 4 Status
 Switch AXUDP Interface to
@@ -483,6 +515,7 @@ Data sent: yellow
 Data received: green
 Idle: red
 Configure in Config, Rf-Ports
+Raw Data in Tools, List, Monitor
 
 |1705 (End) Viewing data from logfile
 
@@ -518,10 +551,13 @@ it is case sensitive and needs full word length.
 or lat/long ddmm.mm  dddmm.mm  "4806.09N 01318.67E"
 or lat/long ddmm.mmm dddmm.mmm "4806.091N 01318.676E"
 or lat/long (-)d.ddddd (-)d.ddddd "48.71 -13.967"
-In File "poi.txt" (in osm-directory) Repeat Find
-to step through matches "g?iss*".
-Cursor up/down steps thru 10 lines of History.
+In Poi's (in osm-directory) Repeat Find to step
+through all matches "p*dorf".
+Go back to map position before with "b", BACKSPACE
+or right click as after any other zoom/pan function.
+Cursor up/down rotates through 10 lines of History.
 
+|2100 No valid Symbol
 |2101 Police, Sheriff
 |2102 Reserved (Had Been Rain)
 |2103 DIGI (White Center)
@@ -609,6 +645,7 @@ Cursor up/down steps thru 10 lines of History.
 |2189 Yagi At QTH
 
 |2197 Emergency (!)
+|2196 No valid Symbol
 |2198 Rain
 |2199 Numbered Star (Green)
 |2200 Bank or ATM (Green Box)
@@ -619,7 +656,7 @@ Cursor up/down steps thru 10 lines of History.
 
 |2206 Snow
 |2207 Church
-
+|2220 HAMNET
 
 
 
@@ -746,11 +783,12 @@ displayed again on "Exit Logview"
 and import it. Works only with dayly Log
 
 |6710 Read data from this path/filename.
-The format is Timestamp in Seconds since 1.1.1970
+The format is Timestamp "yyyymmdd:hhmmss " in utc
 followed by AprsIs Line. The data is sorted at
 import by Time, indexed and all waypoints compared
-to each other for removing dupes for fast rendering
-images and stored in compressed form in RAM
+to each other for removing dupes and stored in
+compressed form in RAM. Append %d to filename
+for dayly logs, "logs/rawlog%d"
 
 |6715 
 |6716 Reload Data from Writelog
@@ -770,8 +808,8 @@ will get filled. On TCP, the Msg is sent
 once and, if not acked, resent as the next
 Beacon of the Destination arrives.
 Modern Igates, gating msg to Rf, will
-take care of efficient resening to mobile
-destinations.
+take care of efficient resending to
+mobile destinations.
 
 |6801 Send Message with no Acknowledge.
 Used for Querys like "?APRSH" "?HELP"
@@ -793,16 +831,27 @@ is acked deleted or switched to "Hold"
 Code to be sent back for ack
 
 
-|6810 Message Text up to 67 Char
+|6810 Message Text up to 67 Char.
+If Beacon Editor "B" is open too,
+an "Item Message" line will be
+copied to send Item as Message
 
 |6815 Destination Call with SSID
 (most in Capital Letters)
+BLN1 to BLN9 for sending
+Bulletins (send as Query)
+
+"RAW" sent as Query sends msg-text
+not as Message but as raw beacon. 
+Use (if You know what You do) for
+general queries or not supported
+beacon formats ">Status Info"
 
 |6820 Send Message (if connected) to Net and
 first for tx enabled Rf Port. If You
 have more than 1 open Port, select the
 Port to send NEXT Msg. 
-To change Port for a pending Msg, klick
+To change Port for a pending Msg, click
 to Port and then to "Set Port" at the
 Stored Msg Line's Pulldown menu 
      
@@ -811,12 +860,12 @@ Messages to Net are sent immediately
 1 time and, if not acked, resent again
 when a beacon of the destination is
 received.
-To change Port for a Pending Msg, klick
+To change Port for a Pending Msg, click
 to Port and then to "Set Port" at the
 Stored Msg Line's Pulldown menu
 
 |6822 Send Message to Radio Port 1
-To change Port for a Pending Msg, klick
+To change Port for a Pending Msg, click
 to Port and then to "Set Port" at the
 Stored Msg Line's Pulldown menu.
 Msgs (with ack) on Rf Ports are resent
@@ -824,17 +873,17 @@ in increasing interval until ack'ed or
 deleted or holded
 
 |6823 Send Message to Radio Port 2
-To change Port for a Pending Msg, klick
+To change Port for a Pending Msg, click
 to Port and then to "Set Port" at the
 Stored Msg Line's Pulldown menu
 
 |6824 Send Message to Radio Port 3
-To change Port for a Pending Msg, klick
+To change Port for a Pending Msg, click
 to Port and then to "Set Port" at the
 Stored Msg Line's Pulldown menu
 
 |6825 Send Message to Radio Port 4
-To change Port for a Pending Msg, klick
+To change Port for a Pending Msg, click
 to Port and then to "Set Port" at the
 Stored Msg Line's Pulldown menu
 
@@ -848,7 +897,7 @@ Stored Msg Line's Pulldown menu
 until Kick or Restart
 
 |6901 First set the (blue) Button to a Port
-then klick this Button to redirect Msg
+then click this Button to redirect Msg
 
 |6900 Edit the Message and requeue
 
@@ -880,7 +929,9 @@ are at each Beacon entry
 
 |7035 Configure Radio Ports
 
-|7040 Things we need to get Online
+|7040 Things we need to get Online 
+and some are usefull for Rf
+Beacons too
 
 |7043 Menus fore/background, Font Size and Colour
 Radio-Range and Reliefmap Colours
@@ -912,9 +963,10 @@ Aprs tools, each should have a different
 SSID at Your Call like -1 -2 ...
  
 
-|7405 If You want overay Symbols Choose the
-Symbol and then click to edit and change
-the \ to the desired overlay character
+|7405 Choose a Symbol, avoid storm, fire and
+other alarm symbols as static beacon.
+For Overlay Symbol an additional
+Character or Number may be choosed
 
 |7406 choose a Symbol on the
 Table and click to enter
@@ -927,6 +979,7 @@ Do not move delete or add characters.
 
 |7415 Net Beacon needs only the Comment like
 Name, QRV on 145.500Mhz
+Beacon Time in "Timers"
 
 \\h \\z \\v \\<file> for inserting time,
 program version or a file
@@ -976,6 +1029,7 @@ and ghost-tracks on Maps.
 
 |7446 Choose Rf-Ports to be gated to
 Internet if gateing is Enabled
+e.g. 124 for Port 1 2 and 4
 
 |7500 Enable/Disable Rf Port 1
 
@@ -1008,7 +1062,7 @@ tnc2/tf/smack:
 tmd710/th-d72/kiss/USB:
  udpflex.exe -U :9002:9001 -i kiss.txt -u -t com3:9600
 
-dire-wolf soundmodem:
+dire-wolf,UZ7HO soundmodem:
  udpflex.exe -U :9002:9001 -T :
 
 example (unix):
@@ -1038,7 +1092,7 @@ Linux hint:Some Windowmakers seem to not
 free memory of old headline entries so,
 if RAM is small, use 0 or option off. 
 
-|7537 Configure Rf to Rf Digipeating
+|7537 Configure Rf to Rf and Net to Rf Digipeating
 
 |7540 Beacon/Object editor 
 
@@ -1085,7 +1139,7 @@ out if Trackfilter is enabled
 of realtime if played with 25hz
 change by click to map
 
-|7708 delay in animation/video bevore
+|7708 delay in animation/video before
 speedup if no one moves
 
 |7709 Shift System Time by up to +-24h in 
@@ -1102,9 +1156,9 @@ Marker 1 and if File "poi.txt" in osm-directory
 contains info to this position, it will be shown
 Toggle with "p"
 
-|7861 On Mouse-Over, from this Zoomlevel or higher,
+|7861 On Mouse-Over, on this Zoomlevel or higher,
 show Point-of-Interest Content from files
-poi.txt and mypoi.txt. On/off with "p".
+in "poi"-directory. On/off with "p".
 Hint: "Config > Reload Config" (re)reads
 this files after changes.
 Press "Save Config" before.
@@ -1165,8 +1219,8 @@ small objects to avoid download
 of maps not really needed
 
 |7925 % of screen to center hold watched objects in
-0: the object moves to margin bevore map is shifted
-100: the object is alway centered
+0: the object moves to margin before map is shifted
+100: the object is always centered
 
 |7920 window size used on next program start
 updated as window size is changed
@@ -1184,7 +1238,8 @@ red Button during this Mode
 |7905 If a selected object gets to be zoomed to
 fit in screen, zooming is done as far as
 Maps in full resolution are in Cache else 
-You get a black map and download starts
+You get a black map and, if enabled,
+download starts
 
 |7900 Enable to get a message if an object
 approaches and is in the configured
@@ -1215,8 +1270,8 @@ To start Beaconing by timer, enable the line
 with On/Off-button.
 
 |8101 Draw on local Map for testing. Hold Shift
-and click to Map to change Position. Delete
-on Map with click to symbol and DEL-Key.
+and click to Map to change Position or press "x".
+Delete on Map with click to symbol and DEL-Key.
 
 |8102 Send edited Beacon immediately to Rf or
 Net Port as configured. Use for sending
@@ -1245,7 +1300,8 @@ or D.DDDDD or :File containing Position or
 simply hold SHIFT Key and click on the Map.
 To quick reposit Objects: "B" to open Beacon
 Editor, Click to Symbol on Map, "DEL" to remove,
-SHIFT-Click to new position, "Draw" or "Send"
+SHIFT-Click or press "x" to new position,
+"Draw" or "Send"
 
 |8122 Text with Macros
 \\z insert day of month and time DDHHMMz
@@ -1280,7 +1336,7 @@ zero bytes overhead.
 
 |8128 Enter Altitude in m over NN or negative
 for below. Only positive values in
-Commpressed Mode. This will take some
+Compressed Mode. This will take some
 Bytes more except in Compressed Mode
 with no speed/direction.
 
@@ -1359,7 +1415,7 @@ if you need finer resolution than 18m.
 |8154 Same as "Mic-e" but with DAO extention
 if you need finer resolution than 18m.
 
-|8160 Sent Beacon to AprsIs on TCPIP Net.
+|8160 Send Beacon to AprsIs on TCPIP Net.
 "Via Path" is not needed here.
 |8161 Send Beacon to Radio Port 1 as configured
 and enabled in "Config > Rf-Ports"
@@ -1525,7 +1581,7 @@ will be cut off at retransmission. This reduces
 own "noise" by shorter frames and a lot of
 network noise because the beacon is not further
 digipeated (Last digi in chain).
-This may be helful to bring things INTO a local area
+This may be helpful to bring things INTO a local area
 if no (eg) 70cm Port is avaliable to do this better.
 
 |8340 Edit this part with "Edit" Function and Restore.
@@ -1551,18 +1607,20 @@ or modify and Restore or Add for a New digi Line.
 
 |8430 1st Value: Brightness of white Lines showing Rf-Paths
 in "Heard" and "+Rf" Mode.
-More Values may be applied for Altitude (srtm) Maps: 
-2nd: default Brightness of Radiorange "R" Image
-3rd: Contrast, 0 hard shaped, 30 flat area till 200
-for mountain area.
-Set 2 markers above Map and enter "R". More
-Contrast with Brightness of OSM-map near 0
 
 
-|8440 Enter Fontsize, Range 8..18 Pixel
+|8440 Enter Fontheight, Range 7..24 Pixel Fontwidth
+Range 6..12 if File "font[width].png" is
+avaliable. "14 8" will load font8.png and
+zoom it to heigth 14.
+Or enter Heigth and Your Fontfile like
+"20 font-bold.png"
+A third percent value zooms Symbols according
+to Fontheight (default 140)
 
 
 |8435 Toggle on/off Transparent Menus
+
 |8436 1..100 black to maximum transparency
 or if transparency off then background
 luminance. try for best readability
@@ -1571,26 +1629,41 @@ luminance. try for best readability
 
 |8529 Antenna at Marker 1 Altitude over Ground.
 If " A" is appended like "10 A", the
-Altitude (if avaliable) from a klicked
+Altitude (if avaliable) from a clicked
 Object will be added
+For calculating RF-Illumination apply a Line:
+<m> <azimuth 0..360> <elevation -90..90>
+<sum of tx,rx Antenna Gain + tx Power in dBm>
+<Antennadiagram Filename>
+eg. "10 270 0 74 antennas/myantenne.ant"
 
 |8527 Antenna at Marker 2 Altitude over Ground.
+3 Antenna-RF-Illumination like Marker 1
 
 |8525 Antenna 3 is used for Radio Range Map
 (shortcut R) as receiver for radiation
-of Antenna 1 and optional Antenna 2 for a
-Range 1 + Range 2 + Reflection Areas Map
-of optical sight (no fresnelzone)
+of Antenna 1 and optional Antenna 2 for
+a Reflection Areas Map of optical sight.
+Mixed Colour Areas show possible places
+for Repeaters. Set to 0m for natural
+Reflektors. Where areas Touch, there
+might be a Diffraction Line. 
 
 |8520 Frequency for Fresnelzone.
 The zone is calculated 3-dimensional
 to see obstacles under and beside of
 Radiation
+For calculating RF-Illumination apply
+the Line: <MHz> <min dBm> <max dBm>
+so min to max dBm at rx antenna will
+be mapped to min..max white or colour
+luminosity. eg. "2400 -90 -60"
 
 |8518 Refraction Factor of Atmosphere
 0.00 in Vacuum
 1.00 Vacuum on Flat Earth or refraction equals earthradius
 0.25 Typical Value in Atmosphere
+For tagged srtm, second value is tree size in m "0.25 25"
 
 |8515 0 is hard shaped area. More realistic
 Image will make values around 5 to 10
@@ -1645,7 +1718,16 @@ yet, switch off "Config>Mapmoving>Zoom as have Maps"
 
 |8600 Switch off all Selections and show all
 (Shortcut "0" or ESC)
- 
+
+|8603 Switch on/off drawing POI-File on Map and choose a Symbol.
+If mouse is neer a POI a short info is shown if zoomlevel
+>=Config/Map Parameter/Show Loc of Mouse. To show full
+info of 3rd csv field go nearer to the position. To
+lock marker1 and 2 to a POI use "X" "Y" key. Drawing
+labels may take long time, "l" toggles Labels on/off.
+Config/Reload Config to re-scan avaliable poi-files
+in "osm/poi/" Directory. Shortcut "C"
+
 |8605 Show Stations with last Beacon has Wx-Data
 (Shortcut w)
 Off with "Show All" "0" oder ESC
@@ -1667,6 +1749,16 @@ be shown. This may be toggled on/off here or
 with "s"-Key. Use TAB-Key to toggle between
 2 Map configurations.
 
-|8626 Select a Symbol, for Overlay Symbols an
-additional Character or Number may be choosed
- 
+|8626 Select one or more Symbols, toggle on/off
+
+|8680 Switch on/off drawing this
+POI-File on Map and choose
+a Symbol. Value in [] is sum
+of POIs in file. Shortcut "C"
+
+|8681 Show only poi Symbols with matching
+(case insensitive) Text in Name or
+Info. "?" is any Character "*" any
+String eg. "*oe3*99.9*"
+Click to find and step through.
+
